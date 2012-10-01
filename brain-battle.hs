@@ -3,6 +3,7 @@
 
 import           Control.Applicative
 import           Control.Concurrent
+import           Data.Bits
 import           Data.Char
 import           Data.List
 import           Data.IntMap (IntMap)
@@ -20,8 +21,8 @@ import           Text.Printf
 type Point     = Int
 type TeamIndex = Int
 
-data Stage a = Stage {width    :: Int,
-                      height   :: Int,
+data Stage a = Stage {width    :: !Int,
+                      height   :: !Int,
                       alive    :: IntMap TeamIndex,       -- ^ Point     -> TeamIndex
                       dying    :: IntMap TeamIndex,       -- ^ Point     -> TeamIndex
                       teams    :: IntMap (Maybe a, Int)}  -- ^ TeamIndex -> (team object or neutral, number of instances)
@@ -30,20 +31,30 @@ data Stage a = Stage {width    :: Int,
 pointToTuple :: Stage a -> Point -> (Int,Int)
 tupleToPoint :: Stage a -> (Int,Int) -> Point
 
-pointToTuple s pt    = (x,y) where (y,x) = pt `quotRem` width s
-tupleToPoint s (x,y) = y * width s + x
+pointToTuple s pt    = (x,y) where y = pt `shiftR` 16
+                                   x = pt .&.      65535
+tupleToPoint s (x,y) = (y `shiftL` 16) .|. x
 
 neighbors :: Stage a -> Point -> [Point]
-neighbors s pt = [correct (x+x',y+y') | y' <- [-1,0,1],
-                                        x' <- [-1,0,1],
-                                        (x',y') /= (0,0)]
+neighbors s pt = map correct coords
   where (x,y) = pointToTuple s pt
+  {-
+        correct (-1,y) = correct (   width  s - 1, y)
+        correct (x,-1) = correct (x, height s - 1   )
         correct (x,y)
-          | x >= width  s = correct (x - width  s, y)
-          | y >= height s = correct (x, y - height s)
-          | x < 0         = correct (x + width  s, y)
-          | y < 0         = correct (x, y + height s)
+          | x == width  s = correct (0,y)
+          | y == height s = correct (x,0)
           | otherwise     = tupleToPoint s (x,y)
+  -}
+        correct (x,y) = tupleToPoint s (x `mod` width s, y `mod` height s)
+        coords = [(x+1,y)
+                 ,(x,y+1)
+                 ,(x-1,y)
+                 ,(x,y-1)
+                 ,(x+1,y+1)
+                 ,(x-1,y+1)
+                 ,(x+1,y-1)
+                 ,(x-1,y-1)]
 
 neighborTeams :: Stage a -> Point -> [TeamIndex]
 neighborTeams s pt = [t | Just t <- map (flip IntMap.lookup (alive s)) (neighbors s pt)]
@@ -53,8 +64,9 @@ isDead s c = c `IntMap.notMember` alive s && c `IntMap.notMember` dying s
 
 step o = IntSet.fold update (o { alive = IntMap.empty, dying = alive o, teams = teamsZero }) deadNeighbors
   where teamsZero       = IntMap.map (\(a,n) -> (a,0)) (teams o)
-        deadNeighbors   = IntSet.fold (IntSet.union . IntSet.filter (isDead o) . IntSet.fromList
-                                       . neighbors o) IntSet.empty $ IntMap.keysSet $ alive o
+        deadNeighbors   = IntSet.filter (isDead o) .
+                            IntSet.fold (IntSet.union . IntSet.fromList . neighbors o)
+                                         IntSet.empty . IntMap.keysSet $ alive o
         incsnd (a,n)    = (a,n+1)
         add    pt s t   = s { teams = IntMap.adjust incsnd t (teams s) ,
                               alive = IntMap.insert pt     t (alive s) }
@@ -149,7 +161,7 @@ wnull i s = return ()
 process c i s = do writeChan c $! Right (i,s)
                    if isWon s
                       then writeChan c $ Left s
-                      else process c (i+1) (step s)
+                      else process c (i+1) $ step s
 
 main = do args <- getArgs
           if length args < 3
