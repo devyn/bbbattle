@@ -1,0 +1,11 @@
+Stage { width = 100, height = 100,
+        teams = fromList [(Just (255,0,0),2),
+                          (Just (0,255,0),2),
+                          (Just (0,0,255),2)],
+        alive = fromList [((25,25),Just (255,0,0)),
+                          ((25,26),Just (255,0,0)),
+                          ((50,50),Just (0,255,0)),
+                          ((50,51),Just (0,255,0)),
+                          ((75,75),Just (0,0,255)),
+                          ((75,76),Just (0,0,255))], 
+        dying = fromList [] }
