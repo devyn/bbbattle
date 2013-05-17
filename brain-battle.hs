@@ -46,12 +46,21 @@ addNeighborsToSet s set pt = i (x+1,y)
   where (x,y)   = pointToTuple s pt
         i (x,y) = IntSet.insert (tupleToPoint s (x `mod` width s, y `mod` height s))
 
-neighbors s pt = addNeighborsToSet s IntSet.empty pt
+neighbors :: Stage a -> Point -> [Point]
+neighbors s pt = map correct coords
+  where (x,y) = pointToTuple s pt
+        correct (x,y) = tupleToPoint s (x `mod` width s, y `mod` height s)
+        coords = [(x+1,y)
+                 ,(x,y+1)
+                 ,(x-1,y)
+                 ,(x,y-1)
+                 ,(x+1,y+1)
+                 ,(x-1,y+1)
+                 ,(x+1,y-1)
+                 ,(x-1,y-1)]
 
 neighborTeams :: Stage a -> Point -> [TeamIndex]
-neighborTeams s pt = IntSet.foldl (\ l pt -> case IntMap.lookup pt (alive s) of
-                                                  Just t  -> t : l
-                                                  Nothing -> l) [] (neighbors s pt)
+neighborTeams s pt = [t | Just t <- map (flip IntMap.lookup (alive s)) (neighbors s pt)]
 
 isDead :: Stage a -> Point -> Bool
 isDead s c = c `IntMap.notMember` alive s && c `IntMap.notMember` dying s
