@@ -11,6 +11,7 @@ import qualified Data.IntMap as IntMap
 import           Data.IntSet (IntSet)
 import qualified Data.IntSet as IntSet
 import           Graphics.GD hiding (Point)
+import qualified Graphics.UI.SDL as SDL
 import           System.Environment
 import           System.Exit
 import           System.FilePath
@@ -161,6 +162,25 @@ png o i s = withImage (newImage (width s, height s)) $ \ img ->
               do stageToImage s img
                  savePngFile (o </> printf "%04i.png" i) img
 
+createColor screen r g b = SDL.mapRGB (SDL.surfaceGetPixelFormat screen) (fromIntegral r) (fromIntegral g) (fromIntegral b)
+
+sdl screen i s = do black <- createColor screen 0 0 0
+                    SDL.fillRect screen (Just (SDL.Rect 0 0 (width s) (height s))) black -- blank
+                    mapM_ (pxa . convert) (IntMap.toList $ alive s)
+                    mapM_ (pxd . convert) (IntMap.toList $ dying s)
+                    SDL.flip screen
+  where convert (pt,ti) = (pointToTuple s pt
+                          ,maybe Nothing fst (IntMap.lookup ti (teams s)))
+        pxRect x y = Just (SDL.Rect (fromIntegral x) (fromIntegral y) 1 1)
+        pxa ((x,y),v) =
+          case v of
+            Just (r,g,b) -> createColor screen r   g   b   >>= SDL.fillRect screen (pxRect x y)
+            Nothing      -> createColor screen 160 160 160 >>= SDL.fillRect screen (pxRect x y)
+        pxd ((x,y),v) =
+          case v of
+            Just (r,g,b) -> createColor screen (r`div`2) (g`div`2) (b`div`2) >>= SDL.fillRect screen (pxRect x y)
+            Nothing      -> createColor screen 80        80        80        >>= SDL.fillRect screen (pxRect x y)
+
 wnull i s = return ()
 
 process ic oc range = do s <- readChan ic
@@ -192,6 +212,10 @@ main = do args <- getArgs
 
                      writeChan eic (Just s)
                      case mode of
-                       "png"  -> writer     (png o) eic pcos (0::Int)
-                       "null" -> writer     wnull   eic pcos (0::Int)
-                       _      -> hPutStrLn  stderr "mode not recognized; should be png or null" >> exitFailure
+                       "png"  -> writer     (png o)  eic pcos (0::Int)
+                       "sdl"  -> do SDL.init [SDL.InitEverything]
+                                    SDL.setVideoMode (width s) (height s) 32 []
+                                    sc <- SDL.getVideoSurface
+                                    writer  (sdl sc) eic pcos (0::Int)
+                       "null" -> writer     wnull    eic pcos (0::Int)
+                       _      -> hPutStrLn  stderr "mode not recognized; should be png, sdl or null" >> exitFailure
