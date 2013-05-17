@@ -174,7 +174,7 @@ main = do args <- getArgs
 
                      let csize = width s `div` caps + 1
                      mapM (\ (oc,n) -> do putStrLn $ show (n*csize,0,((n+1)*csize),height s + 1)
-                                          forkIO $ process (ics !! n) oc (n*csize,0,((n+1)*csize),height s)) (zip pcos [0,1])
+                                          forkIO $ process (ics !! n) oc (n*csize,0,((n+1)*csize),height s)) (zip pcos [0..(caps-1)])
 
                      writeChan eic (Just s)
                      case mode of
