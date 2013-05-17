@@ -38,14 +38,6 @@ tupleToPoint s (x,y) = (y `shiftL` 16) .|. x
 neighbors :: Stage a -> Point -> [Point]
 neighbors s pt = map correct coords
   where (x,y) = pointToTuple s pt
-  {-
-        correct (-1,y) = correct (   width  s - 1, y)
-        correct (x,-1) = correct (x, height s - 1   )
-        correct (x,y)
-          | x == width  s = correct (0,y)
-          | y == height s = correct (x,0)
-          | otherwise     = tupleToPoint s (x,y)
-  -}
         correct (x,y) = tupleToPoint s (x `mod` width s, y `mod` height s)
         coords = [(x+1,y)
                  ,(x,y+1)
@@ -62,11 +54,13 @@ neighborTeams s pt = [t | Just t <- map (flip IntMap.lookup (alive s)) (neighbor
 isDead :: Stage a -> Point -> Bool
 isDead s c = c `IntMap.notMember` alive s && c `IntMap.notMember` dying s
 
-step o = IntSet.fold update (o { alive = IntMap.empty, dying = alive o, teams = teamsZero }) deadNeighbors
+step o (minX,minY,maxX,maxY) = IntSet.fold update (o { alive = IntMap.empty, dying = alive o, teams = teamsZero }) deadNeighbors
   where teamsZero       = IntMap.map (\(a,n) -> (a,0)) (teams o)
         deadNeighbors   = IntSet.filter (isDead o) .
                             IntSet.fold (IntSet.union . IntSet.fromList . neighbors o)
-                                         IntSet.empty . IntMap.keysSet $ alive o
+                                         IntSet.empty . IntSet.filter isInRange . IntMap.keysSet $ alive o
+        isInRange pt    = let (x,y) = pointToTuple o pt
+                          in  x >= minX && x < maxX && y >= minY && y < maxY
         incsnd (a,n)    = (a,n+1)
         add    pt s t   = s { teams = IntMap.adjust incsnd t (teams s) ,
                               alive = IntMap.insert pt     t (alive s) }
@@ -117,15 +111,17 @@ bbbTeam = spaces ((,) <$> (color <* char ':') <*> ((,) <$> bbbPointList 'a' <*> 
 bbbPointList c = spaces (char c *> (p `sepBy` space) <* char '.')
   where p      = (,) <$> (num <* optional space <* char ',') <*> (optional space *> num)
 
-writer sf c             = readChan c >>= f
-  where f (Left  d)     = do let Just win = winner d
-                             putStrLn $ "\nwinner: " ++
-                               case win of
-                                 Just t  -> show t
-                                 Nothing -> "nobody; it's a tie!"
-        f (Right (i,s)) = do status i s
-                             sf     i s
-                             writer sf c
+writer sf pc pcos i =
+  do s <- foldl1 (\ s s' -> s { alive = alive s `IntMap.union` alive s'
+                              , teams = IntMap.mapWithKey (\ k (t,m) -> let Just (_,n) = IntMap.lookup k (teams s') in (t, n + m))
+                                                          (teams s) }) <$> mapM (readChan) pcos
+     status i s
+     sf i s
+     let win = winner s
+     case win of
+          Just (Just t) -> writeChan pc Nothing  >> putStrLn ("\nwinner: " ++ show t)
+          Just Nothing  -> writeChan pc Nothing  >> putStrLn ("\nwinner: nobody; it's a tie!")
+          Nothing       -> writeChan pc (Just s) >> writer sf pc pcos (i+1)
 
 status i s = do let al       = IntMap.size (alive s)
                     dy       = IntMap.size (dying s)
@@ -158,19 +154,30 @@ png o i s = withImage (newImage (width s, height s)) $ \ img ->
 
 wnull i s = return ()
 
-process c i s = do writeChan c $! Right (i,s)
-                   if isWon s
-                      then writeChan c $ Left s
-                      else process c (i+1) $ step s
+process ic oc range = do s <- readChan ic
+                         case s of
+                              Nothing -> return ()
+                              Just s  -> do writeChan oc $! step s range
+                                            process ic oc range
 
 main = do args <- getArgs
           if length args < 3
              then hPutStrLn stderr "usage: brain-battle (png|null) <sourcefile> <outputdir>" >> exitFailure
              else do let (mode:ss:o:_) = args
                      s <- fmap (readBBB ss) (readFile ss)
-                     c <- newChan :: IO (Chan (Either (Stage (Int,Int,Int)) (Int,Stage (Int,Int,Int))))
-                     forkIO $ process c (0::Int) $! s
+
+                     caps <- getNumCapabilities
+
+                     eic <- newChan
+                     ics <- (eic :) <$> mapM (const (dupChan eic)) [0..(caps-2)]
+                     pcos <- mapM (const newChan) [0..(caps-1)]
+
+                     let csize = width s `div` caps + 1
+                     mapM (\ (oc,n) -> do putStrLn $ show (n*csize,0,((n+1)*csize),height s + 1)
+                                          forkIO $ process (ics !! n) oc (n*csize,0,((n+1)*csize),height s)) (zip pcos [0,1])
+
+                     writeChan eic (Just s)
                      case mode of
-                       "png"  -> writer     (png o) c
-                       "null" -> writer     wnull   c
+                       "png"  -> writer     (png o) eic pcos (0::Int)
+                       "null" -> writer     wnull   eic pcos (0::Int)
                        _      -> hPutStrLn  stderr "mode not recognized; should be png or null" >> exitFailure
