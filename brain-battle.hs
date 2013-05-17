@@ -35,21 +35,23 @@ pointToTuple s pt    = (x,y) where y = pt `shiftR` 16
                                    x = pt .&.      65535
 tupleToPoint s (x,y) = (y `shiftL` 16) .|. x
 
-neighbors :: Stage a -> Point -> [Point]
-neighbors s pt = map correct coords
-  where (x,y) = pointToTuple s pt
-        correct (x,y) = tupleToPoint s (x `mod` width s, y `mod` height s)
-        coords = [(x+1,y)
-                 ,(x,y+1)
-                 ,(x-1,y)
-                 ,(x,y-1)
-                 ,(x+1,y+1)
-                 ,(x-1,y+1)
-                 ,(x+1,y-1)
-                 ,(x-1,y-1)]
+addNeighborsToSet s set pt = i (x+1,y)
+                           . i (x,y+1)
+                           . i (x-1,y)
+                           . i (x,y-1)
+                           . i (x+1,y+1)
+                           . i (x-1,y-1)
+                           . i (x+1,y-1)
+                           . i (x-1,y+1) $ set
+  where (x,y)   = pointToTuple s pt
+        i (x,y) = IntSet.insert (tupleToPoint s (x `mod` width s, y `mod` height s))
+
+neighbors s pt = addNeighborsToSet s IntSet.empty pt
 
 neighborTeams :: Stage a -> Point -> [TeamIndex]
-neighborTeams s pt = [t | Just t <- map (flip IntMap.lookup (alive s)) (neighbors s pt)]
+neighborTeams s pt = IntSet.foldl (\ l pt -> case IntMap.lookup pt (alive s) of
+                                                  Just t  -> t : l
+                                                  Nothing -> l) [] (neighbors s pt)
 
 isDead :: Stage a -> Point -> Bool
 isDead s c = c `IntMap.notMember` alive s && c `IntMap.notMember` dying s
@@ -57,8 +59,8 @@ isDead s c = c `IntMap.notMember` alive s && c `IntMap.notMember` dying s
 step o (minX,minY,maxX,maxY) = IntSet.fold update (o { alive = IntMap.empty, dying = alive o, teams = teamsZero }) deadNeighbors
   where teamsZero       = IntMap.map (\(a,n) -> (a,0)) (teams o)
         deadNeighbors   = IntSet.filter (isDead o) .
-                            IntSet.fold (IntSet.union . IntSet.fromList . neighbors o)
-                                         IntSet.empty . IntSet.filter isInRange . IntMap.keysSet $ alive o
+                            IntSet.foldl (addNeighborsToSet o)
+                                          IntSet.empty . IntSet.filter isInRange . IntMap.keysSet $ alive o
         isInRange pt    = let (x,y) = pointToTuple o pt
                           in  x >= minX && x < maxX && y >= minY && y < maxY
         incsnd (a,n)    = (a,n+1)
@@ -116,12 +118,10 @@ writer sf pc pcos i =
                               , teams = IntMap.mapWithKey (\ k (t,m) -> let Just (_,n) = IntMap.lookup k (teams s') in (t, n + m))
                                                           (teams s) }) <$> mapM (readChan) pcos
      status i s
-     sf i s
-     let win = winner s
-     case win of
-          Just (Just t) -> writeChan pc Nothing  >> putStrLn ("\nwinner: " ++ show t)
-          Just Nothing  -> writeChan pc Nothing  >> putStrLn ("\nwinner: nobody; it's a tie!")
-          Nothing       -> writeChan pc (Just s) >> writer sf pc pcos (i+1)
+     case winner s of
+          Just (Just t) -> writeChan pc Nothing  >> sf i s >> putStrLn ("\nwinner: " ++ show t)
+          Just Nothing  -> writeChan pc Nothing  >> sf i s >> putStrLn ("\nwinner: nobody; it's a tie!")
+          Nothing       -> writeChan pc (Just s) >> sf i s >> writer sf pc pcos (i+1)
 
 status i s = do let al       = IntMap.size (alive s)
                     dy       = IntMap.size (dying s)
@@ -173,8 +173,7 @@ main = do args <- getArgs
                      pcos <- mapM (const newChan) [0..(caps-1)]
 
                      let csize = width s `div` caps + 1
-                     mapM (\ (oc,n) -> do putStrLn $ show (n*csize,0,((n+1)*csize),height s + 1)
-                                          forkIO $ process (ics !! n) oc (n*csize,0,((n+1)*csize),height s)) (zip pcos [0..(caps-1)])
+                     mapM (\ (oc,n) -> forkIO $ process (ics !! n) oc (n*csize,0,((n+1)*csize),height s)) (zip pcos [0..(caps-1)])
 
                      writeChan eic (Just s)
                      case mode of
