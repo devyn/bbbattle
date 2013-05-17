@@ -181,8 +181,14 @@ main = do args <- getArgs
                      ics <- (eic :) <$> mapM (const (dupChan eic)) [0..(caps-2)]
                      pcos <- mapM (const newChan) [0..(caps-1)]
 
-                     let csize = width s `div` caps + 1
-                     mapM (\ (oc,n) -> forkIO $ process (ics !! n) oc (n*csize,0,((n+1)*csize),height s)) (zip pcos [0..(caps-1)])
+                     if caps `mod` 2 == 0
+                        then let csize = width s `div` (caps `div` 2) + 1
+                             in  mapM (\ n -> do forkIO $ process (ics !! (n*2))   (pcos !! (n*2))   (n*csize,0,((n+1)*csize),height s `div` 2)
+                                                 forkIO $ process (ics !! (n*2+1)) (pcos !! (n*2+1)) (n*csize,height s `div` 2,((n+1)*csize),height s))
+                                      [0..((caps `div` 2)-1)]
+                        else let csize = width s `div` caps + 1
+                             in  mapM (\ (oc,n) -> forkIO $ process (ics !! n) oc (n*csize,0,((n+1)*csize),height s))
+                                      (zip pcos [0..(caps-1)])
 
                      writeChan eic (Just s)
                      case mode of
