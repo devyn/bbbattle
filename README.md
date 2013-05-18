@@ -10,7 +10,7 @@ At the moment, both GD and the Haskell module, `Graphics.GD`, as well as SDL and
 
 ## Running
 
-    ./brain-battle {null|sdl|png} <path-to-bbbattle-file> <output-dir>
+    ./brain-battle {null|sdl|bbbout|png} <path-to-bbbattle-file> <output-dir>
 
 Note that `sdl` does not do any kind of syncing, so it may run too quickly to see. Also, for both `null` and `sdl` outputs, the output dir is still a required argument although it is not used, so any value is acceptable. This will also change in the future.
 
@@ -66,3 +66,7 @@ The rest of the "dying" cells. The section is ended with a period as before.
 Another team, with color `rgb(255,160,0)`, a shade of orange. Alive cells and dying cells are specified.
 
 It is worth noting that the alive or dying sections may be empty, but are required to both be present. An example of this is `Examples/200x200.bbattle`, which consists of only two alive cells for each team. The dying section is still specified, as `d.`.
+
+## The bbbout file format
+
+Work in progress.
