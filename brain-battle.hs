@@ -253,7 +253,7 @@ process ic oc range = do s <- readChan ic
 
 main = do args <- getArgs
           if length args < 3
-             then hPutStrLn stderr "usage: brain-battle (png|null) <sourcefile> <outputdir>" >> exitFailure
+             then hPutStrLn stderr "usage: brain-battle {png,sdl,bbbout,null} <source-file> <output-destination>" >> exitFailure
              else do let (mode:ss:o:_) = args
                      s <- fmap (readBBB ss) (readFile ss)
 
