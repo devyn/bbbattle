@@ -72,4 +72,91 @@ It is worth noting that the alive or dying sections may be empty, but are requir
 
 ## The bbbout file format
 
-Work in progress.
+*Work in progress.*
+
+### Current version (`bbbout1:`)
+
+#### Header
+
+    offset length type      description
+    -------------------------------------------------------
+    0      8      char[]    Magic string: "bbbout1:"
+    8      2      uint16be  Width of world
+    10     2      uint16be  Height of world
+    12     1      char      Start of team map: 'T'
+    13     2      uint16be  Number of teams
+
+    Total: 15 bytes.
+
+Parse the following for each team described by the `Number of teams` field:
+
+    offset length type      description
+    -------------------------------------------------------
+    0      2      int16be   Team ID
+    2      1      uint8     Red component of team color
+    3      1      uint8     Green component of team color
+    4      1      uint8     Blue component of team color
+
+    Total: 5 bytes.
+
+Immediately after the header, generation zero should be expected.
+
+#### Generation
+
+    offset length type      description
+    -------------------------------------------------------
+    0      1      char      Start of generation: 'g'
+    1      4      uint32be  Generation ID
+
+    Total: 5 bytes.
+
+If the next byte is also a 'g', parse the generation. If it is a 't', parse a team generation and associate it with this generation.
+
+#### Team generation
+
+    offset length type      description
+    -------------------------------------------------------
+    0      1      char      Start of team generation: 't'
+    1      2      int16be   Team ID (-1 = neutral team)
+    3      1      char      Start of alive cell set: 'a'
+
+    Total: 4 bytes.
+
+Parse a cell set. This is the team generation's alive cells. Next:
+
+    offset length type      description
+    -------------------------------------------------------
+    0      1      char      Start of dying cell set: 'd'
+
+    Total: 1 byte.
+
+Parse a cell set. This is the team generation's dying cells.
+
+If the next byte is a 't', parse the next team generation, which is associated with the same generation as the current one. If the next byte is a 'g', parse a new generation.
+
+#### Cell set
+
+    offset length type      description
+    -------------------------------------------------------
+    0      2      uint16be  Number of rows
+
+    Total: 2 bytes.
+
+Parse the following for each row described by the `Number of rows` field:
+
+    offset length type      description
+    -------------------------------------------------------
+    0      2      uint16be  Y-coordinate of row
+    2      2      uint16be  Number of cells in row
+
+    Total: 4 bytes.
+
+Parse the following for each cell described by the `Number of cells in row` field:
+
+    offset length type      description
+    -------------------------------------------------------
+    0      2      uint16be  X-coordinate of cell
+
+The X-coordinate of the cell and the Y-coordinate of the row make up the `(x,y)` position of the cell as a point.
+
+After all rows have been read, the cell set ends.
