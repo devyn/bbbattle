@@ -251,10 +251,16 @@ process ic oc range = do s <- readChan ic
                               Just s  -> do writeChan oc $! step s range
                                             process ic oc range
 
+putUsage = hPutStr stderr usageMessage >> exitFailure
+  where usageMessage = "usage: brain-battle png    <source-file> <output-dir>\n"
+                    ++ "       brain-battle sdl    <source-file>\n"
+                    ++ "       brain-battle bbbout <source-file> <output-file>\n"
+                    ++ "       brain-battle null   <source-file>\n"
+
 main = do args <- getArgs
-          if length args < 3
-             then hPutStrLn stderr "usage: brain-battle {png,sdl,bbbout,null} <source-file> <output-destination>" >> exitFailure
-             else do let (mode:ss:o:_) = args
+          if length args < 2
+             then putUsage
+             else do let (mode:ss:rest) = args
                      s <- fmap (readBBB ss) (readFile ss)
 
                      caps <- getNumCapabilities
@@ -274,14 +280,22 @@ main = do args <- getArgs
 
                      writeChan eic (Just s)
                      case mode of
-                       "png"    -> writer     (png o)  eic pcos (0::Int)
+                       "png"    -> case rest of
+                                        (o:_) -> writer (png o) eic pcos (0::Int)
+                                        _     -> putUsage
+
                        "sdl"    -> do SDL.init [SDL.InitEverything]
                                       SDL.setVideoMode (width s) (height s) 32 []
                                       sc <- SDL.getVideoSurface
                                       writer  (sdl sc) eic pcos (0::Int)
-                       "bbbout" -> withFile o WriteMode $ \ f ->
-                                     do B.hPut f . runPut $ putHeader s
-                                        B.hPut f . runPut $ putGeneration 0 s
-                                        writer (bbbout f) eic pcos (0::Int)
-                       "null"   -> writer     wnull    eic pcos (0::Int)
-                       _        -> hPutStrLn  stderr "mode not recognized; should be png, sdl, bbbout or null" >> exitFailure
+
+                       "bbbout" -> case rest of
+                                        (o:_) -> withFile o WriteMode $ \ f ->
+                                                   do B.hPut f . runPut $ putHeader s
+                                                      B.hPut f . runPut $ putGeneration 0 s
+                                                      writer (bbbout f) eic pcos (0::Int)
+                                        _     -> putUsage
+
+                       "null"   -> writer wnull eic pcos (0::Int)
+
+                       _        -> putUsage

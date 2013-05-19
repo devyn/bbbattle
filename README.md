@@ -10,13 +10,16 @@ At the moment, both GD and the Haskell module, `Graphics.GD`, as well as SDL and
 
 ## Running
 
-    ./brain-battle {null|sdl|bbbout|png} <path-to-bbbattle-file> <output-dir>
+    ./brain-battle png    <source-file> <output-dir>
+                   sdl    <source-file>
+                   bbbout <source-file> <output-file>
+                   null   <source-file>
 
-Note that `sdl` does not do any kind of syncing, so it may run too quickly to see. Also, for both `null` and `sdl` outputs, the output dir is still a required argument although it is not used, so any value is acceptable. This will also change in the future.
+Note that `sdl` does not do any kind of syncing, so it may run too quickly to see.
 
 To run the 500x500 example with SDL output:
 
-    ./brain-battle sdl Examples/500x500.bbbattle .
+    ./brain-battle sdl Examples/500x500.bbbattle
 
 To run 200x200 with PNG:
 
