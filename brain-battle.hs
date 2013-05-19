@@ -232,7 +232,6 @@ putHeader s = do putByteString $ BSC.pack "bbbout1:"
                  putWord16be   . fromIntegral $ height s
 
                  putWord8      $ c 'T'
-                 putWord8      $ c 'T'
                  putWord16be   . fromIntegral . IntMap.size $ teams s
                  flip mapM_ [(t,c) | (t,(Just c,_)) <- IntMap.toList (teams s)] $ \ (t,(r,g,b)) ->
                    do putWord16be $ fromIntegral t
