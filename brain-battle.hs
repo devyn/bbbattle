@@ -205,10 +205,11 @@ groupByTeam s = flip map (IntSet.toList $ IntMap.keysSet al
   where al = invertIntMap (alive s)
         dy = invertIntMap (dying s)
 
-putCellSet set = flip mapM_ (IntMap.toList yxmap) $ \ (y,xs) ->
-                   do putWord16be $ fromIntegral y
-                      putWord16be . fromIntegral $ IntSet.size xs
-                      mapM_ (putWord16be . fromIntegral) $ IntSet.toList xs
+putCellSet set = do putWord16be . fromIntegral $ IntMap.size yxmap
+                    flip mapM_ (IntMap.toList yxmap) $ \ (y,xs) ->
+                      do putWord16be $ fromIntegral y
+                         putWord16be . fromIntegral $ IntSet.size xs
+                         mapM_ (putWord16be . fromIntegral) $ IntSet.toList xs
 
   where yxmap               = foldl insertPoint IntMap.empty . map pointToTuple $ IntSet.toList set
         insertPoint m (x,y) = IntMap.alter (Just . maybe (IntSet.singleton x) (IntSet.insert x)) y m
