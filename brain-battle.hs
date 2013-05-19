@@ -170,11 +170,15 @@ stageToImage s img =
             Just (r,g,b) -> setPixel (x,y) (rgb' (r`div`2) (g`div`2) (b`div`2)) img
             Nothing      -> setPixel (x,y) (rgb  80        80        80)        img
 
+png :: String -> Int -> ColorStage -> IO ()
+
 png o i s = withImage (newImage (width s, height s)) $ \ img ->
               do stageToImage s img
                  savePngFile (o </> printf "%04i.png" i) img
 
 createColor screen r g b = SDL.mapRGB (SDL.surfaceGetPixelFormat screen) r g b
+
+sdl :: SDL.Surface -> Int -> ColorStage -> IO ()
 
 sdl screen i s = do black <- createColor screen 0 0 0
                     SDL.fillRect screen (Just (SDL.Rect 0 0 (width s) (height s))) black -- blank
@@ -241,6 +245,8 @@ putHeader s = do putByteString $ BSC.pack "bbbout1:"
                       putWord8    b
   where c = fromIntegral . ord
 
+bbbout :: Handle -> Int -> ColorStage -> IO ()
+
 bbbout f i s = B.hPut f . runPut $ putGeneration i s
 
 wnull i s = return ()
@@ -281,21 +287,22 @@ main = do args <- getArgs
                      writeChan eic (Just s)
                      case mode of
                        "png"    -> case rest of
-                                        (o:_) -> writer (png o) eic pcos (0::Int)
+                                        (o:_) -> do png o 0 s
+                                                    writer (png o) eic pcos 1
                                         _     -> putUsage
 
                        "sdl"    -> do SDL.init [SDL.InitEverything]
                                       SDL.setVideoMode (width s) (height s) 32 []
                                       sc <- SDL.getVideoSurface
-                                      writer  (sdl sc) eic pcos (0::Int)
+                                      writer  (sdl sc) eic pcos 1
 
                        "bbbout" -> case rest of
                                         (o:_) -> withFile o WriteMode $ \ f ->
                                                    do B.hPut f . runPut $ putHeader s
                                                       B.hPut f . runPut $ putGeneration 0 s
-                                                      writer (bbbout f) eic pcos (0::Int)
+                                                      writer (bbbout f) eic pcos 1
                                         _     -> putUsage
 
-                       "null"   -> writer wnull eic pcos (0::Int)
+                       "null"   -> writer wnull eic pcos 1
 
                        _        -> putUsage
