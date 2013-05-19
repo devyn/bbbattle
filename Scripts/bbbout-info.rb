@@ -40,13 +40,19 @@ def read_cell_set
   points
 end
 
+previous_alive_cells = {}
+
 while !ARGF.eof? and ARGF.read(1) == 'g'
   gen_id = ARGF.read(4).unpack("N")[0]
 
   puts "- generation #{gen_id}"
 
+  inc_teams = []
+
   while !ARGF.eof? and ARGF.read(1) == 't'
     team_id = ARGF.read(2).unpack("s>")[0]
+
+    inc_teams << team_id
 
     if ARGF.read(1) == "a"
       alive_cells = read_cell_set
@@ -54,10 +60,11 @@ while !ARGF.eof? and ARGF.read(1) == 'g'
       abort "E: expected start of alive cells section at byte #{ARGF.pos}"
     end
 
-    if ARGF.read(1) == "d"
+    if !ARGF.eof? and ARGF.read(1) == "d"
       dying_cells = read_cell_set
     else
-      abort "E: expected start of dying cells section at byte #{ARGF.pos}"
+      dying_cells = previous_alive_cells[team_id] || []
+      ARGF.pos -= 1 unless ARGF.eof?
     end
 
     ac = alive_cells.size
@@ -68,9 +75,23 @@ while !ARGF.eof? and ARGF.read(1) == 'g'
     else
       puts "    rgb(#{teams[team_id].join(",")}):\t#{ac + dc} cells: #{ac} alive, #{dc} dying"
     end
+
+    previous_alive_cells[team_id] = alive_cells
   end
 
-  if !ARGF.eof?
+  (previous_alive_cells.keys - inc_teams).each { |team_id|
+    dc = previous_alive_cells[team_id].size
+
+    if team_id == -1
+      puts "    neutral:\t\t#{dc} cells: 0 alive, #{dc} dying"
+    else
+      puts "    rgb(#{teams[team_id].join(",")}):\t#{dc} cells: 0 alive, #{dc} dying"
+    end
+
+    previous_alive_cells.delete team_id
+  }
+
+  unless ARGF.eof?
     ARGF.pos -= 1
   end
 end

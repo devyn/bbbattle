@@ -218,8 +218,8 @@ putCellSet set = do putWord16be . fromIntegral $ IntMap.size yxmap
   where yxmap               = foldl insertPoint IntMap.empty . map pointToTuple $ IntSet.toList set
         insertPoint m (x,y) = IntMap.alter (Just . maybe (IntSet.singleton x) (IntSet.insert x)) y m
 
-putGeneration i s = do putWord8    $ c 'g'
-                       putWord32be $ fromIntegral i -- generation number
+putGeneration 0 s = do putWord8    $ c 'g'
+                       putWord32be 0 -- generation number
 
                        flip mapM_ (groupByTeam s) $ \ (t,a,d) ->
                          do putWord8    $ c 't'
@@ -230,6 +230,17 @@ putGeneration i s = do putWord8    $ c 'g'
 
                             putWord8    $ c 'd'
                             putCellSet  d
+  where c = fromIntegral . ord
+
+putGeneration i s = do putWord8    $ c 'g'
+                       putWord32be $ fromIntegral i -- generation number
+
+                       flip mapM_ (IntMap.toList . invertIntMap $ alive s) $ \ (t,a) ->
+                         do putWord8    $ c 't'
+                            putWord16be $ fromIntegral t
+
+                            putWord8    $ c 'a'
+                            putCellSet  a
   where c = fromIntegral . ord
 
 putHeader s = do putByteString $ BSC.pack "bbbout1:"

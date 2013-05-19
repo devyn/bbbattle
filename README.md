@@ -122,7 +122,11 @@ If the next byte is also a 'g', parse the generation. If it is a 't', parse a te
 
     Total: 4 bytes.
 
-Parse a cell set. This is the team generation's alive cells. Next:
+Parse a cell set. This is the team generation's alive cells.
+
+If the next byte is a 't', parse the next team generation; if it is a 'g', parse a new generation. Assume that the dying cells for this team generation are the alive cells from the last team generation. If there is no previous team generation, assume the empty set.
+
+Otherwise, if the byte after the cell set is a 'd', continue:
 
     offset length type      description
     -------------------------------------------------------
