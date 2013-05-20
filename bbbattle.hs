@@ -266,10 +266,10 @@ process ic oc range = do s <- readChan ic
                                             process ic oc range
 
 putUsage = hPutStr stderr usageMessage >> exitFailure
-  where usageMessage = "usage: brain-battle png    <source-file> <output-dir>\n"
-                    ++ "       brain-battle sdl    <source-file>\n"
-                    ++ "       brain-battle bbbout <source-file> <output-file>\n"
-                    ++ "       brain-battle null   <source-file>\n"
+  where usageMessage = "usage: bbbattle png    <source-file> <output-dir>\n"
+                    ++ "       bbbattle sdl    <source-file>\n"
+                    ++ "       bbbattle bbbout <source-file> <output-file>\n"
+                    ++ "       bbbattle null   <source-file>\n"
 
 main = do args <- getArgs
           if length args < 2

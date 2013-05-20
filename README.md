@@ -4,27 +4,29 @@ A multiplayer battle game based on the cellular automata, [Brian's Brain](http:/
 
 ## Compiling
 
-    make
+    cabal configure && cabal build
 
 At the moment, both GD and the Haskell module, `Graphics.GD`, as well as SDL and `Graphics.UI.SDL` are required. In the future, there will be compile-time options to enable or disable these.
 
+The executable may be found at `dist/build/bbbattle/bbbattle` and can be installed with `cabal install`.
+
 ## Running
 
-    ./brain-battle png    <source-file> <output-dir>
-                   sdl    <source-file>
-                   bbbout <source-file> <output-file>
-                   null   <source-file>
+    bbbattle png    <source-file> <output-dir>
+             sdl    <source-file>
+             bbbout <source-file> <output-file>
+             null   <source-file>
 
 Note that `sdl` does not do any kind of syncing, so it may run too quickly to see.
 
 To run the 500x500 example with SDL output:
 
-    ./brain-battle sdl Examples/500x500.bbbattle
+    bbbattle sdl Examples/500x500.bbbattle
 
 To run 200x200 with PNG:
 
     mkdir out200
-    ./brain-battle png Examples/200x200.bbbattle out200
+    bbbattle png Examples/200x200.bbbattle out200
 
 PNG files will be stored as `out200/%04d.png`, that is, four digit generation numbers. These can be made into a video with `ffmpeg`, for example:
 

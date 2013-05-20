@@ -1,6 +1,4 @@
 .DS_Store
 .*.swp
-brain-battle
-*.hi
-*.o
+dist/
 workspace
