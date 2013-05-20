@@ -4,7 +4,7 @@ A multiplayer battle game based on the cellular automata, [Brian's Brain](http:/
 
 ## Compiling
 
-    ghc -threaded -rtsopts -with-rtsopts="-N -qg0 -H64m" -O2 --make brain-battle
+    make
 
 At the moment, both GD and the Haskell module, `Graphics.GD`, as well as SDL and `Graphics.UI.SDL` are required. In the future, there will be compile-time options to enable or disable these.
 

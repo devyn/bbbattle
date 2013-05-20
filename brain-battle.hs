@@ -1,6 +1,3 @@
--- compile with -rtsopts, -threaded, and -O for best results, and play
--- with the rts opts a little
-
 import           Control.Applicative
 import           Control.Concurrent
 import           Data.Binary
