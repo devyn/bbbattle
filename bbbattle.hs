@@ -71,9 +71,11 @@ isDead s c = c `IntMap.notMember` alive s && c `IntMap.notMember` dying s
 
 step o (minX,minY,maxX,maxY) = IntSet.fold update (o { alive = IntMap.empty, dying = alive o, teams = teamsZero }) deadNeighbors
   where teamsZero       = IntMap.map (\(a,n) -> (a,0)) (teams o)
-        deadNeighbors   = IntSet.filter (isDead o) .
+        deadNeighbors   = (`IntSet.difference` alivePts) . (`IntSet.difference` dyingPts) .
                             IntSet.foldl (addNeighborsToSet o)
-                                          IntSet.empty . IntSet.filter isInRange . IntMap.keysSet $ alive o
+                                          IntSet.empty $ IntSet.filter isInRange alivePts
+        alivePts        = IntMap.keysSet (alive o)
+        dyingPts        = IntMap.keysSet (dying o)
         isInRange pt    = let (x,y) = pointToTuple pt
                           in  x >= minX && x < maxX && y >= minY && y < maxY
         incsnd (a,n)    = (a,n+1)
