@@ -175,16 +175,16 @@ png o i s = withImage (newImage (width s, height s)) $ \ img ->
 
 createColor screen r g b = SDL.mapRGB (SDL.surfaceGetPixelFormat screen) r g b
 
-sdl :: SDL.Surface -> Int -> ColorStage -> IO ()
+sdl :: SDL.Surface -> Int -> Int -> ColorStage -> IO ()
 
-sdl screen i s = do black <- createColor screen 0 0 0
-                    SDL.fillRect screen (Just (SDL.Rect 0 0 (width s) (height s))) black -- blank
-                    mapM_ (pxa . convert) (IntMap.toList $ alive s)
-                    mapM_ (pxd . convert) (IntMap.toList $ dying s)
-                    SDL.flip screen
+sdl screen scale i s = do black <- createColor screen 0 0 0
+                          SDL.fillRect screen (Just (SDL.Rect 0 0 (width s * scale) (height s * scale))) black -- blank
+                          mapM_ (pxa . convert) (IntMap.toList $ alive s)
+                          mapM_ (pxd . convert) (IntMap.toList $ dying s)
+                          SDL.flip screen
   where convert (pt,ti) = (pointToTuple pt
                           ,maybe Nothing fst (IntMap.lookup ti (teams s)))
-        pxRect x y = Just (SDL.Rect (fromIntegral x) (fromIntegral y) 1 1)
+        pxRect x y = Just (SDL.Rect (x * scale) (y * scale) scale scale)
         pxa ((x,y),v) =
           case v of
             Just (r,g,b) -> createColor screen r   g   b   >>= SDL.fillRect screen (pxRect x y)
@@ -267,7 +267,7 @@ process ic oc range = do s <- readChan ic
 
 putUsage = hPutStr stderr usageMessage >> exitFailure
   where usageMessage = "usage: bbbattle png    <source-file> <output-dir>\n"
-                    ++ "       bbbattle sdl    <source-file>\n"
+                    ++ "       bbbattle sdl    <source-file> [scale=1]\n"
                     ++ "       bbbattle bbbout <source-file> <output-file>\n"
                     ++ "       bbbattle null   <source-file>\n"
 
@@ -299,10 +299,13 @@ main = do args <- getArgs
                                                     writer (png o) eic pcos 1
                                         _     -> putUsage
 
-                       "sdl"    -> do SDL.init [SDL.InitEverything]
-                                      SDL.setVideoMode (width s) (height s) 32 []
+                       "sdl"    -> do let scale = case rest of
+                                                       (scn:_) -> read scn
+                                                       _       -> 1
+                                      SDL.init [SDL.InitEverything]
+                                      SDL.setVideoMode (width s * scale) (height s * scale) 32 []
                                       sc <- SDL.getVideoSurface
-                                      writer  (sdl sc) eic pcos 1
+                                      writer  (sdl sc scale) eic pcos 1
 
                        "bbbout" -> case rest of
                                         (o:_) -> withFile o WriteMode $ \ f ->

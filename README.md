@@ -13,7 +13,7 @@ The executable may be found at `dist/build/bbbattle/bbbattle` and can be install
 ## Running
 
     bbbattle png    <source-file> <output-dir>
-             sdl    <source-file>
+             sdl    <source-file> [scale=1]
              bbbout <source-file> <output-file>
              null   <source-file>
 
