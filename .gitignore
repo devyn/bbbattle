@@ -2,3 +2,8 @@
 .*.swp
 dist/
 workspace
+*.o
+*.hi
+*.cl.h
+*.dump
+bbbattle
