@@ -6,8 +6,16 @@ ifeq ($(shell uname), Darwin)
 	MACOSX=1
 	LDFLAGS=-framework OpenCL
 else
-	MACOSX=0
 	LDFLAGS=-lOpenCL
+endif
+
+ifdef MINGW32_AMD
+	CFLAGS  += -I"/c/Program Files (x86)/AMD APP/include"
+	LDFLAGS += -L"/c/Program Files (x86)/AMD APP/bin/x86"
+endif
+ifdef MINGW64_AMD
+	CFLAGS  += -I"/c/Program Files (x86)/AMD APP/include"
+	LDFLAGS += -L"/c/Program Files (x86)/AMD APP/bin/x86_64"
 endif
 
 OBJECTS=bbbattle.o
