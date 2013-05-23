@@ -72,11 +72,6 @@ int main(int argc, char **argv) {
   platform_vendor[platform_vendor_size] = '\0';
 
   printf("Platform Name: %s, Vendor: %s\n", platform_name, platform_vendor);
-
-  cl_context_properties cprops[2];
-
-  cprops[0] = CL_CONTEXT_PLATFORM;
-  cprops[1] = (cl_context_properties) platform;
   
   /* create device */
 
@@ -102,14 +97,30 @@ int main(int argc, char **argv) {
 
   /* create context */
 
+  cl_context_properties cprops[2];
+
+  cprops[0] = CL_CONTEXT_PLATFORM;
+  cprops[1] = (cl_context_properties) platform;
+
   context = clCreateContext(cprops, 1, &device, NULL, NULL, &err);
+  assert(err == CL_SUCCESS);
 
   const size_t program_source_len = strlen(program_source);
 
   cl_program program = clCreateProgramWithSource(context, 1, (const char **) &program_source, &program_source_len, &err);
-
-  err = clBuildProgram(program, 0, NULL, NULL, NULL, NULL);
   assert(err == CL_SUCCESS);
+
+  err = clBuildProgram(program, 1, &device, NULL, NULL, NULL);
+  if (err != CL_SUCCESS) {
+    char log[65536];
+    size_t log_size;
+
+    clGetProgramBuildInfo(program, device, CL_PROGRAM_BUILD_LOG, 65536, log, &log_size);
+
+    fwrite(log, 1, log_size, stderr);
+
+    assert(err == CL_SUCCESS);
+  }
 
   /* create command queue */
 
