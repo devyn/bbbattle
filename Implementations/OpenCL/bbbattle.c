@@ -97,10 +97,11 @@ int main(int argc, char **argv) {
 
   /* create context */
 
-  cl_context_properties cprops[2];
+  cl_context_properties cprops[3];
 
   cprops[0] = CL_CONTEXT_PLATFORM;
   cprops[1] = (cl_context_properties) platform;
+  cprops[2] = 0;
 
   context = clCreateContext(cprops, 1, &device, NULL, NULL, &err);
   assert(err == CL_SUCCESS);
