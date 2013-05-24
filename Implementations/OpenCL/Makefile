@@ -18,15 +18,15 @@ ifdef MINGW64_AMD
 	LDFLAGS += -L"/c/Program Files (x86)/AMD APP/bin/x86_64"
 endif
 
-OBJECTS=bbbattle.o
+OBJECTS=bbbattle.o fmt_bbbattle.o
 
 all: bbbattle
 
 bbbattle: $(OBJECTS)
-	$(LD) $(LDFLAGS) -o $@ $<
+	$(LD) $(LDFLAGS) -o $@ $(OBJECTS)
 
 bbbattle.o: bbbattle.c bbbattle.cl.h
-	$(CC) $(CFLAGS) -c -o $@ $<
+	$(CC) $(CFLAGS) -c -o $@ bbbattle.c
 
 bbbattle.cl.h: bbbattle.cl
 	ruby kernel_to_header.rb bbbattle.cl

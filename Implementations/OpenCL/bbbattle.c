@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
+#include <limits.h>
 
 #ifdef __APPLE__
   #include <OpenCL/cl.h>
@@ -10,6 +11,7 @@
 #endif
 
 #include "bbbattle.cl.h"
+#include "fmt_bbbattle.h"
 
 cl_platform_id platform;
 cl_device_id device;
@@ -22,7 +24,7 @@ cl_mem alive_d;
 cl_mem dying_d;
 cl_mem new_alive_d;
 
-const size_t dimensions[2] = {1024, 1024};
+size_t dimensions[2];
 
 void step() {
   cl_int err;
@@ -46,10 +48,12 @@ int main(int argc, char **argv) {
 
   int generations = 0;
 
-  if (argc > 1) {
-    generations = atoi(argv[1]);
-    assert(generations >= 0);
+  if (argc < 3) {
+    fprintf(stderr, "Usage: %s <generations> <bbbattle_file>\n", argv[0]);
+    exit(1);
   }
+
+  generations = strtol(argv[1], NULL, 10);
 
   /* create platform */
 
@@ -127,22 +131,24 @@ int main(int argc, char **argv) {
 
   queue = clCreateCommandQueue(context, device, 0, &err);
 
-  /* create buffers. */
+  /* create buffers and load bbbattle file */
 
-  const cl_uint width  = dimensions[0];
-  const cl_uint height = dimensions[1];
+  int width;
+  int height;
+  int teams;
+  char *alive_h;
+  char *dying_h;
+  struct rgb24 team_colors[256];
 
-  const size_t mem_size = sizeof(char) * width * height;
+  FILE *bbbf = fopen(argv[2], "r");
+  int bbberr = read_bbbattle(&width, &height, &teams, &alive_h, &dying_h, team_colors, bbbf);
+  fclose(bbbf);
+  assert(bbberr == READ_BBBATTLE_SUCCESS);
 
-  char *alive_h = calloc(1, mem_size);
-  char *dying_h = calloc(1, mem_size);
+  const size_t mem_size = width * height * sizeof(char);
 
-  // a500,500 500,501.d. (like Examples/500x500.bbbattle)
-  alive_h[250*width + 250] = 1;
-  alive_h[251*width + 250] = 1;
-
-  alive_h[750*width + 750] = 2;
-  alive_h[751*width + 750] = 2;
+  dimensions[0] = width;
+  dimensions[1] = height;
 
   alive_d = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, mem_size, alive_h, &err);
   assert(err == CL_SUCCESS);
