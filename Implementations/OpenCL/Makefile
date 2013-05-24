@@ -4,6 +4,7 @@ CFLAGS=
 
 ifeq ($(shell uname), Darwin)
 	MACOSX=1
+	CC=clang
 	LDFLAGS=-framework OpenCL
 else
 	LDFLAGS=-lOpenCL
