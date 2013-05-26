@@ -12,6 +12,7 @@
 
 #include "bbbattle.cl.h"
 #include "fmt_bbbattle.h"
+#include "fmt_bbbout.h"
 
 cl_platform_id platform;
 cl_device_id device;
@@ -48,12 +49,43 @@ int main(int argc, char **argv) {
 
   int generations = 0;
 
-  if (argc < 3) {
-    fprintf(stderr, "Usage: %s <generations> <bbbattle_file>\n", argv[0]);
+  if (argc < 4) {
+    fprintf(stderr, "Usage: %s <generations> <bbbattle_file> <bbbout_file>\n", argv[0]);
     exit(1);
   }
 
   generations = strtol(argv[1], NULL, 10);
+
+  /* create buffers and load bbbattle file */
+
+  int width;
+  int height;
+  int teams;
+  char *alive_h;
+  char *dying_h;
+  struct rgb24 team_colors[256];
+
+  FILE *bbbf = fopen(argv[2], "r");
+
+  if (bbbf == NULL) {
+    perror(argv[2]);
+    return 1;
+  }
+
+  int bbberr = read_bbbattle(&width, &height, &teams, &alive_h, &dying_h, team_colors, bbbf);
+  fclose(bbbf);
+  assert(bbberr == READ_BBBATTLE_SUCCESS);
+
+  /* open bbbout stream */
+
+  bbbout_stream *bbbo = bbbout_open(argv[3], width, height, teams, team_colors);
+  
+  if (bbbo == NULL) {
+    perror(argv[3]);
+    return 1;
+  }
+
+  bbbout_write_generation(bbbo, 0, alive_h, dying_h);
 
   /* create platform */
 
@@ -131,19 +163,7 @@ int main(int argc, char **argv) {
 
   queue = clCreateCommandQueue(context, device, 0, &err);
 
-  /* create buffers and load bbbattle file */
-
-  int width;
-  int height;
-  int teams;
-  char *alive_h;
-  char *dying_h;
-  struct rgb24 team_colors[256];
-
-  FILE *bbbf = fopen(argv[2], "r");
-  int bbberr = read_bbbattle(&width, &height, &teams, &alive_h, &dying_h, team_colors, bbbf);
-  fclose(bbbf);
-  assert(bbberr == READ_BBBATTLE_SUCCESS);
+  /* create device buffers */
 
   const size_t mem_size = width * height * sizeof(char);
 
@@ -170,25 +190,18 @@ int main(int argc, char **argv) {
   err = clSetKernelArg(step_bbbattle, 3, sizeof(cl_uint), &width);       assert(err == CL_SUCCESS);
   err = clSetKernelArg(step_bbbattle, 4, sizeof(cl_uint), &height);      assert(err == CL_SUCCESS);
 
-  /* run kernel */
+  /* run kernel and stream to bbbout */
 
-  int t;
-  for (t = 0; t < generations; t++) {
+  int gen;
+  for (gen = 1; gen <= generations; gen++) {
     step();
+    err = clEnqueueReadBuffer(queue, alive_d, CL_TRUE, 0, mem_size, alive_h, 0, NULL, NULL);
+    assert(err == CL_SUCCESS);
+
+    bbbout_write_generation(bbbo, gen, alive_h, NULL);
   }
 
-  /* read output */
-
-  err = clEnqueueReadBuffer(queue, alive_d, CL_TRUE, 0, mem_size, alive_h, 0, NULL, NULL);
-  err = clEnqueueReadBuffer(queue, dying_d, CL_TRUE, 0, mem_size, dying_h, 0, NULL, NULL);
-
-  FILE *out = fopen("alive.dump", "w");
-  fwrite(alive_h, width, height, out);
-  fclose(out);
-
-  out = fopen("dying.dump", "w");
-  fwrite(dying_h, width, height, out);
-  fclose(out);
+  bbbout_close(bbbo);
 
   free(alive_h);
   free(dying_h);

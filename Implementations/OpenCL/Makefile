@@ -19,7 +19,7 @@ ifdef MINGW64_AMD
 	LDFLAGS += -L"/c/Program Files (x86)/AMD APP/bin/x86_64"
 endif
 
-OBJECTS=bbbattle.o fmt_bbbattle.o
+OBJECTS=bbbattle.o fmt_bbbattle.o fmt_bbbout.o
 
 all: bbbattle
 
