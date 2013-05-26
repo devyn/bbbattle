@@ -44,6 +44,57 @@ void step() {
   err = clSetKernelArg(step_bbbattle, 2, sizeof(cl_mem),  &new_alive_d); assert(err == CL_SUCCESS);
 }
 
+void print_status(int generation, int teams, int *team_counts, struct rgb24 *team_colors) {
+  printf("\033[1G\033[Kgeneration %i: ", generation);
+  
+  int i, a;
+  for (i = 1; i <= teams; i++) {
+    if (team_counts[i] != 0) {
+      if (a != 0) printf(", ");
+
+      printf("(%i,%i,%i) => %i", team_colors[i].red, team_colors[i].green, team_colors[i].blue, team_counts[i]);
+      a++;
+    }
+  }
+
+  if (team_counts[255] != 0) {
+    if (a != 0) printf(", ");
+
+    printf("neutral => %i", team_counts[255]);
+  }
+
+  fflush(stdout);
+}
+
+/* 0  => no winner yet
+ * -1 => tie (neutral winner)
+ * _  => winning team
+ */
+char check_winner(int teams, int *team_counts, struct rgb24 *team_colors) {
+  char possible_winner = -1;
+
+  int i;
+  for (i = 1; i <= teams; i++) {
+    if (team_counts[i] != 0) {
+      if (possible_winner != -1) {
+        return 0;
+      } else {
+        possible_winner = i;
+      }
+    }
+  }
+
+  if (possible_winner == -1) {
+    printf("\nwinner: nobody; it's a tie!\n");
+  } else {
+    printf("\nwinner: (%i,%i,%i)\n", team_colors[possible_winner].red,
+                                     team_colors[possible_winner].green,
+                                     team_colors[possible_winner].blue);
+  }
+
+  return possible_winner;
+}
+
 int main(int argc, char **argv) {
   cl_int err;
 
@@ -64,6 +115,7 @@ int main(int argc, char **argv) {
   char *alive_h;
   char *dying_h;
   struct rgb24 team_colors[256];
+  int team_counts[256];
 
   FILE *bbbf = fopen(argv[2], "r");
 
@@ -85,7 +137,12 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  bbbout_write_generation(bbbo, 0, alive_h, dying_h);
+  bbbout_write_generation(bbbo, 0, alive_h, dying_h, team_counts);
+
+  if (check_winner(teams, team_counts, team_colors) != 0) {
+    fputs("Error: the initial generation was already won, i.e., only one team had alive cells. Check the input file.\n", stderr);
+    return 1;
+  }
 
   /* create platform */
 
@@ -129,7 +186,7 @@ int main(int argc, char **argv) {
   device_name[device_name_size] = '\0';
   device_vendor[device_vendor_size] = '\0';
 
-  printf("GPU Name: %s, Vendor: %s\n", device_name, device_vendor);
+  printf("GPU Name: %s, Vendor: %s\n\n", device_name, device_vendor);
 
   /* create context */
 
@@ -192,13 +249,20 @@ int main(int argc, char **argv) {
 
   /* run kernel and stream to bbbout */
 
-  int gen;
-  for (gen = 1; gen <= generations; gen++) {
+  int gen = 0;
+  while (1) {
     step();
     err = clEnqueueReadBuffer(queue, alive_d, CL_TRUE, 0, mem_size, alive_h, 0, NULL, NULL);
     assert(err == CL_SUCCESS);
 
-    bbbout_write_generation(bbbo, gen, alive_h, NULL);
+    bbbout_write_generation(bbbo, gen, alive_h, NULL, team_counts);
+    print_status(gen, teams, team_counts, team_colors);
+
+    if (check_winner(teams, team_counts, team_colors) != 0) {
+      break;
+    }
+
+    gen++;
   }
 
   bbbout_close(bbbo);

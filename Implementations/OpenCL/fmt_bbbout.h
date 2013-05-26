@@ -32,9 +32,9 @@ bbbout_stream *bbbout_open(char *path, uint16_t width, uint16_t height, unsigned
 
 void bbbout_close(bbbout_stream *stream);
 
-int bbbout_write_generation(bbbout_stream *stream, uint32_t gen_id, char *alive, char *dying);
+int bbbout_write_generation(bbbout_stream *stream, uint32_t gen_id, char *alive, char *dying, int *team_counts);
 
-int bbbout_build_cellsets(bbbout_stream *stream, bbbout_cellset *teams, char *cells);
+int bbbout_build_cellsets(bbbout_stream *stream, bbbout_cellset *teams, char *cells, int *team_counts);
 
 void bbbout_free_cellsets(bbbout_cellset *cellsets, int size);
 

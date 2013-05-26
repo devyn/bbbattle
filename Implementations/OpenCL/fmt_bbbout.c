@@ -82,7 +82,7 @@ void bbbout_close(bbbout_stream *stream) {
   free(stream);
 }
 
-int bbbout_write_generation(bbbout_stream *stream, uint32_t gen_id, char *alive, char *dying) {
+int bbbout_write_generation(bbbout_stream *stream, uint32_t gen_id, char *alive, char *dying, int *team_counts) {
   fputc('g', stream->out);
 
   fput_be32(gen_id, stream->out);
@@ -91,12 +91,12 @@ int bbbout_write_generation(bbbout_stream *stream, uint32_t gen_id, char *alive,
   int x, y;
 
   bbbout_cellset *alive_cellsets = calloc(256, sizeof(bbbout_cellset));
-  bbbout_build_cellsets(stream, alive_cellsets, alive);
+  bbbout_build_cellsets(stream, alive_cellsets, alive, team_counts);
 
   bbbout_cellset *dying_cellsets;
   if (dying != NULL) {
     dying_cellsets = calloc(256, sizeof(bbbout_cellset));
-    bbbout_build_cellsets(stream, dying_cellsets, dying);
+    bbbout_build_cellsets(stream, dying_cellsets, dying, NULL);
   }
 
   for (t = 1; t <= stream->teams; t++) {
@@ -142,21 +142,28 @@ int bbbout_write_generation(bbbout_stream *stream, uint32_t gen_id, char *alive,
   return 0;
 }
 
-int bbbout_build_cellsets(bbbout_stream *stream, bbbout_cellset *teams, char *cells) {
+int bbbout_build_cellsets(bbbout_stream *stream, bbbout_cellset *teams, char *cells, int *team_counts) {
   uint16_t x, y;
   size_t pt;
 
   for (x = 1; x <= stream->teams; x++) {
     teams[x].first = NULL;
     teams[x].last  = NULL;
+
+    if (team_counts != NULL) team_counts[x] = 0;
   }
 
   teams[255].first = NULL;
   teams[255].last  = NULL;
 
+  if (team_counts != NULL) team_counts[255] = 0;
+
   for (y = 0, pt = 0; y < stream->height; y++) {
     for (x = 0; x < stream->width; x++, pt++) {
       if (cells[pt] != 0) {
+
+        if (team_counts != NULL) team_counts[(unsigned char) cells[pt]]++;
+
         bbbout_cellset_row *row = teams[(unsigned char) cells[pt]].last;
 
         if (row == NULL) {
