@@ -44,7 +44,7 @@ bbbout_stream *bbbout_open(char *path, uint16_t width, uint16_t height, unsigned
   stream->width  = width;
   stream->height = height;
   stream->teams  = teams;
-  stream->out    = fopen(path, "w");
+  stream->out    = fopen(path, "wb");
 
   if (stream->out == NULL) {
     free(stream);
