@@ -102,12 +102,10 @@ int main(int argc, char **argv) {
 
   int generations = 0;
 
-  if (argc < 4) {
-    fprintf(stderr, "Usage: %s <generations> <bbbattle_file> <bbbout_file>\n", argv[0]);
+  if (argc < 3) {
+    fprintf(stderr, "Usage: %s <bbbattle_file> <bbbout_file>\n", argv[0]);
     exit(1);
   }
-
-  generations = strtol(argv[1], NULL, 10);
 
   /* create buffers and load bbbattle file */
 
@@ -119,10 +117,10 @@ int main(int argc, char **argv) {
   struct rgb24 team_colors[256];
   int team_counts[256];
 
-  FILE *bbbf = fopen(argv[2], "r");
+  FILE *bbbf = fopen(argv[1], "r");
 
   if (bbbf == NULL) {
-    perror(argv[2]);
+    perror(argv[1]);
     return 1;
   }
 
@@ -132,10 +130,10 @@ int main(int argc, char **argv) {
 
   /* open bbbout stream */
 
-  bbbout_stream *bbbo = bbbout_open(argv[3], width, height, teams, team_colors);
+  bbbout_stream *bbbo = bbbout_open(argv[2], width, height, teams, team_colors);
   
   if (bbbo == NULL) {
-    perror(argv[3]);
+    perror(argv[2]);
     return 1;
   }
 
