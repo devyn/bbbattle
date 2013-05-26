@@ -45,7 +45,8 @@ void step() {
 }
 
 void print_status(int generation, int teams, int *team_counts, struct rgb24 *team_colors) {
-  printf("\033[1G\033[Kgeneration %i: ", generation);
+  //printf("\033[1G\033[Kgeneration %i: ", generation);
+  printf("generation %i: ", generation);
   
   int i, a;
   for (i = 1; i <= teams; i++) {
@@ -63,7 +64,8 @@ void print_status(int generation, int teams, int *team_counts, struct rgb24 *tea
     printf("neutral => %i", team_counts[255]);
   }
 
-  fflush(stdout);
+  //fflush(stdout);
+  printf("\n");
 }
 
 /* 0  => no winner yet
