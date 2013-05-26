@@ -1,25 +1,31 @@
 #!/usr/bin/env ruby
 
-if ARGF.read(8) == "bbbout1:"
+unless ARGV.size >= 1
+  abort "usage: bbbout-info.rb <bbbout-file>"
+end
+
+$bbbout = File.open(ARGV[0], "rb")
+
+if $bbbout.read(8) == "bbbout1:"
   puts "bbbout version 1"
 else
   abort "E: unknown or invalid bbbout format!"
 end
 
-width, height = ARGF.read(4).unpack("nn")
+width, height = $bbbout.read(4).unpack("nn")
 
 puts "width: #{width}, height: #{height}"
 
-if ARGF.read(1) != "T"
-  abort "E: expected start of team section in header at byte #{ARGF.pos}"
+if $bbbout.read(1) != "T"
+  abort "E: expected start of team section in header at byte #{$bbbout.pos}"
 end
 
-n_teams = ARGF.read(2).unpack("n")[0]
+n_teams = $bbbout.read(2).unpack("n")[0]
 
 puts "#{n_teams} teams:"
 
 teams = Hash[n_teams.times.map {
-  team_id, r, g, b = ARGF.read(5).unpack("s>CCC")
+  team_id, r, g, b = $bbbout.read(5).unpack("s>CCC")
 
   puts "  id #{team_id}: rgb(#{r},#{g},#{b})"
 
@@ -29,12 +35,12 @@ teams = Hash[n_teams.times.map {
 def read_cell_set
   points = []
 
-  rows = ARGF.read(2).unpack("n")[0]
+  rows = $bbbout.read(2).unpack("n")[0]
 
   rows.times {
-    y, n_cells = ARGF.read(4).unpack("nn")
+    y, n_cells = $bbbout.read(4).unpack("nn")
 
-    points += ARGF.read(n_cells * 2).unpack("n*").map { |x| [x,y] }
+    points += $bbbout.read(n_cells * 2).unpack("n*").map { |x| [x,y] }
   }
 
   points
@@ -42,29 +48,29 @@ end
 
 previous_alive_cells = {}
 
-while !ARGF.eof? and ARGF.read(1) == 'g'
-  gen_id = ARGF.read(4).unpack("N")[0]
+while !$bbbout.eof? and $bbbout.read(1) == 'g'
+  gen_id = $bbbout.read(4).unpack("N")[0]
 
   puts "- generation #{gen_id}"
 
   inc_teams = []
 
-  while !ARGF.eof? and ARGF.read(1) == 't'
-    team_id = ARGF.read(2).unpack("s>")[0]
+  while !$bbbout.eof? and $bbbout.read(1) == 't'
+    team_id = $bbbout.read(2).unpack("s>")[0]
 
     inc_teams << team_id
 
-    if ARGF.read(1) == "a"
+    if $bbbout.read(1) == "a"
       alive_cells = read_cell_set
     else
-      abort "E: expected start of alive cells section at byte #{ARGF.pos}"
+      abort "E: expected start of alive cells section at byte #{$bbbout.pos}"
     end
 
-    if !ARGF.eof? and ARGF.read(1) == "d"
+    if !$bbbout.eof? and $bbbout.read(1) == "d"
       dying_cells = read_cell_set
     else
       dying_cells = previous_alive_cells[team_id] || []
-      ARGF.pos -= 1 unless ARGF.eof?
+      $bbbout.pos -= 1 unless $bbbout.eof?
     end
 
     ac = alive_cells.size
@@ -91,7 +97,7 @@ while !ARGF.eof? and ARGF.read(1) == 'g'
     previous_alive_cells.delete team_id
   }
 
-  unless ARGF.eof?
-    ARGF.pos -= 1
+  unless $bbbout.eof?
+    $bbbout.pos -= 1
   end
 end
