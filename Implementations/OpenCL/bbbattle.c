@@ -48,7 +48,7 @@ void print_status(int generation, int teams, int *team_counts, struct rgb24 *tea
   //printf("\033[1G\033[Kgeneration %i: ", generation);
   printf("generation %i: ", generation);
   
-  int i, a;
+  int i, a = 0;
   for (i = 1; i <= teams; i++) {
     if (team_counts[i] != 0) {
       if (a != 0) printf(", ");
