@@ -1,25 +1,27 @@
 #define check_neighbors(nx, ny) \
-  if ((y + (ny) >= 0) & (y + (ny) < height) & (x + (nx) >= 0) & (x + (nx) < width)) { \
-    if (alive[(y + (ny))*width + (x + (nx))] != 0) { \
+  if ((y + (ny) >= 0) & (y + (ny) < HEIGHT) & (x + (nx) >= 0) & (x + (nx) < WIDTH)) { \
+    char cell = alive[(y + (ny)) * WIDTH + (x + (nx))]; \
+\
+    if (cell != 0) { \
       alive_neighbor_count++; \
 \
       if (new_team != -1) { \
         if (new_team != 0) { \
-          if (new_team != alive[(y + (ny))*width + (x + (nx))]) { \
+          if (new_team != cell) { \
             new_team = -1; \
           } \
         } else { \
-          new_team = alive[(y + (ny))*width + (x + (nx))]; \
+          new_team = cell; \
         } \
       } \
     } \
   }
 
-__kernel void step_bbbattle(__global const char *alive, __global const char *dying, __global char *new_alive, const uint width, const uint height) {
+__kernel void step_bbbattle(__global const char *alive, __global const char *dying, __global char *new_alive) {
   const int x = get_global_id(0);
   const int y = get_global_id(1);
 
-  const size_t p = y*width + x;
+  const size_t p = y*WIDTH + x;
 
   if (alive[p] != 0 || dying[p] != 0) {
     new_alive[p] = 0;

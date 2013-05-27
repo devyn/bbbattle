@@ -212,7 +212,10 @@ int main(int argc, char **argv) {
   cl_program program = clCreateProgramWithSource(context, 1, (const char **) &program_source, &program_source_len, &err);
   assert(err == CL_SUCCESS);
 
-  err = clBuildProgram(program, 1, &device, NULL, NULL, NULL);
+  char options[64];
+  sprintf(options, "-DWIDTH=%i -DHEIGHT=%i", width, height);
+
+  err = clBuildProgram(program, 1, &device, options, NULL, NULL);
   if (err != CL_SUCCESS) {
     char log[65536];
     size_t log_size;
@@ -252,8 +255,6 @@ int main(int argc, char **argv) {
   err = clSetKernelArg(step_bbbattle, 0, sizeof(cl_mem),  &alive_d);     assert(err == CL_SUCCESS);
   err = clSetKernelArg(step_bbbattle, 1, sizeof(cl_mem),  &dying_d);     assert(err == CL_SUCCESS);
   err = clSetKernelArg(step_bbbattle, 2, sizeof(cl_mem),  &new_alive_d); assert(err == CL_SUCCESS);
-  err = clSetKernelArg(step_bbbattle, 3, sizeof(cl_uint), &width);       assert(err == CL_SUCCESS);
-  err = clSetKernelArg(step_bbbattle, 4, sizeof(cl_uint), &height);      assert(err == CL_SUCCESS);
 
   /* run kernel and stream to bbbout */
 
