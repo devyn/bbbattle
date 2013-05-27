@@ -170,7 +170,11 @@ int main(int argc, char **argv) {
 
   cl_uint n_devices = 0;
 
+#ifdef OPENCL_CPU
+  err = clGetDeviceIDs(platform, CL_DEVICE_TYPE_CPU, 1, &device, &n_devices);
+#else
   err = clGetDeviceIDs(platform, CL_DEVICE_TYPE_GPU, 1, &device, &n_devices);
+#endif
 
   if (n_devices == 0) return 1;
 
@@ -186,7 +190,11 @@ int main(int argc, char **argv) {
   device_name[device_name_size] = '\0';
   device_vendor[device_vendor_size] = '\0';
 
+#ifdef OPENCL_CPU
+  printf("CPU Name: %s, Vendor: %s\n\n", device_name, device_vendor);
+#else
   printf("GPU Name: %s, Vendor: %s\n\n", device_name, device_vendor);
+#endif
 
   /* create context */
 
