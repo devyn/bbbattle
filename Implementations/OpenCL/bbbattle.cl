@@ -15,7 +15,8 @@
         } \
       } \
     } \
-  }
+  } \
+  barrier(CLK_GLOBAL_MEM_FENCE);
 
 __kernel void step_bbbattle(__global const char *alive, __global const char *dying, __global char *new_alive) {
   const int x = get_global_id(0);
