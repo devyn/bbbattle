@@ -12,7 +12,7 @@
 
 #include "bbbattle.cl.h"
 #include "fmt_bbbattle.h"
-#include "fmt_bbbout.h"
+#include "fmt_bbbout_write.h"
 
 cl_platform_id platform;
 cl_device_id device;
@@ -130,7 +130,7 @@ int main(int argc, char **argv) {
 
   /* open bbbout stream */
 
-  bbbout_stream *bbbo = bbbout_open(argv[2], width, height, teams, team_colors);
+  bbbout_stream *bbbo = bbbout_open_write(argv[2], width, height, teams, team_colors);
   
   if (bbbo == NULL) {
     perror(argv[2]);
