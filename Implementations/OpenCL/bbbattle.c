@@ -258,7 +258,7 @@ int main(int argc, char **argv) {
 
   /* run kernel and stream to bbbout */
 
-  int gen = 0;
+  int gen = 1;
   while (1) {
     step();
     err = clEnqueueReadBuffer(queue, alive_d, CL_TRUE, 0, mem_size, alive_h, 0, NULL, NULL);
