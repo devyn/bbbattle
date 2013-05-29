@@ -17,11 +17,15 @@ ifdef MINGW32_AMD
 	WINDOWS=1
 	BBBATTLE_CFLAGS         +=-I"/c/Program Files (x86)/AMD APP/include"
 	BBBATTLE_STATIC_OBJECTS +="/c/Program Files (x86)/AMD APP/lib/x86/libOpenCL.a"
+
+	BBBOUT_SDL_STATIC_OBJECTS +=/usr/lib/libSDL.dll.a
 endif
 ifdef MINGW64_AMD
 	WINDOWS=1
 	BBBATTLE_CFLAGS         +=-I"/c/Program Files (x86)/AMD APP/include"
 	BBBATTLE_STATIC_OBJECTS +="/c/Program Files (x86)/AMD APP/lib/x86_64/libOpenCL.a"
+
+	BBBOUT_SDL_STATIC_OBJECTS +=/usr/lib/libSDL.dll.a
 endif
 
 ifeq ($(shell uname), Darwin)
