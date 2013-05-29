@@ -1,27 +1,27 @@
 #include "fmt_bbbout_write.h"
 
-int little_endian;
-
-int i16tobe16(uint16_t i) {
-  if (little_endian) {
-    return (i << 8) | (i >> 8);
-  } else {
-    return i;
-  }
-}
+#ifdef INTEGERS_ARE_BIG_ENDIAN
+#define i16tobe16(i) i
+#else
+#define i16tobe16(i) ((i) << 8) | ((i) >> 8)
+#endif
 
 int fput_be16(uint16_t i, FILE *out) {
-  if (little_endian) {
-    i = (i << 8) | (i >> 8);
-  }
+
+#ifndef INTEGERS_ARE_BIG_ENDIAN
+  i = (i << 8) | (i >> 8);
+#endif
+
   return fwrite(&i, sizeof(uint16_t), 1, out);
 }
 
 int fput_be32(uint32_t i, FILE *out) {
-  if (little_endian) {
-    i = ((i << 8) & 0xFF00FF00) | ((i >> 8) & 0x00FF00FF);
-    i = (i << 16) | (i >> 16);
-  }
+
+#ifndef INTEGERS_ARE_BIG_ENDIAN
+  i = ((i << 8) & 0xFF00FF00) | ((i >> 8) & 0x00FF00FF);
+  i = (i << 16) | (i >> 16);
+#endif
+
   return fwrite(&i, sizeof(uint32_t), 1, out);
 }
 
@@ -46,11 +46,6 @@ bbbout_stream *bbbout_open_write(char *path, uint16_t width, uint16_t height, un
   /* begin writing header */
 
   fputs("bbbout1:", stream->file);
-
-  /* check endianness */
-
-  int n = 1;
-  little_endian = ((char*) &n)[0];
 
   /* dimensions */
 

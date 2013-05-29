@@ -1,12 +1,12 @@
 #include "fmt_bbbout_read.h"
 
-int little_endian;
-
 int fget_be16(uint16_t *dest, FILE *src) {
   if (fread(dest, sizeof(uint16_t), 1, src) == 1) {
-    if (little_endian) {
-      *dest = ((*dest) >> 8) | ((*dest) << 8);
-    }
+
+#ifndef INTEGERS_ARE_BIG_ENDIAN
+    *dest = ((*dest) >> 8) | ((*dest) << 8);
+#endif
+
     return 1;
   } else {
     return 0;
@@ -15,9 +15,11 @@ int fget_be16(uint16_t *dest, FILE *src) {
 
 int fget_be16x4(uint64_t *dest, FILE *src) {
   if (fread(dest, sizeof(uint64_t), 1, src) == 1) {
-    if (little_endian) {
+
+#ifndef INTEGERS_ARE_BIG_ENDIAN
       *dest = (((*dest) & 0xFF00FF00FF00FF00) >> 8) | (((*dest) & 0x00FF00FF00FF00FF) << 8);
-    }
+#endif
+
     return 4;
   } else {
     return 0;
@@ -26,10 +28,12 @@ int fget_be16x4(uint64_t *dest, FILE *src) {
 
 int fget_be32(uint32_t *dest, FILE *src) {
   if (fread(dest, sizeof(uint32_t), 1, src) == 1) {
-    if (little_endian) {
+
+#ifndef INTEGERS_ARE_BIG_ENDIAN
       *dest = (((*dest) << 8) & 0xFF00FF00) | (((*dest) >> 8) & 0x00FF00FF);
       *dest = ((*dest) << 16) | ((*dest) >> 16);
-    }
+#endif
+
     return 1;
   } else {
     return 0;
@@ -69,11 +73,6 @@ bbbout_stream *bbbout_open_read(char *path, int *err) {
   if (memcmp(buf, "bbbout1:", 8) != 0) {
     close_and_err(BBBOUT_HEADER_INVALID_ERROR);
   }
-
-  /* check endianness */
-
-  int n = 1;
-  little_endian = ((char*) &n)[0];
 
   /* read width and height and verify */
 
