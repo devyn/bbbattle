@@ -132,12 +132,14 @@ int bbbout_build_cellsets(bbbout_stream *stream, bbbout_cellset *teams, char *ce
   size_t pt;
 
   for (x = 1; x <= stream->teams; x++) {
+    teams[x].number_of_rows = 0;
     teams[x].first = NULL;
     teams[x].last  = NULL;
 
     if (team_counts != NULL) team_counts[x] = 0;
   }
 
+  teams[255].number_of_rows = 0;
   teams[255].first = NULL;
   teams[255].last  = NULL;
 
@@ -149,48 +151,89 @@ int bbbout_build_cellsets(bbbout_stream *stream, bbbout_cellset *teams, char *ce
 
         if (team_counts != NULL) team_counts[(unsigned char) cells[pt]]++;
 
-        bbbout_cellset_row *row = teams[(unsigned char) cells[pt]].last;
+        bbbout_cellset_rowgroup *rowgroup = teams[(unsigned char) cells[pt]].last;
 
-        if (row == NULL) {
-          row = teams[(unsigned char) cells[pt]].first = teams[(unsigned char) cells[pt]].last = malloc(sizeof(bbbout_cellset_row));
+        bbbout_cellset_row *row;
 
-          if (row == NULL) {
+        if (rowgroup == NULL) {
+          rowgroup = teams[(unsigned char) cells[pt]].first = teams[(unsigned char) cells[pt]].last = malloc(sizeof(bbbout_cellset_rowgroup));
+
+          if (rowgroup == NULL) {
             bbbout_free_cellsets(&teams[1], stream->teams);
             bbbout_free_cellsets(&teams[255], 1);
             return -8;
           }
 
-          row->y = y;
-          row->capacity = 64;
-          row->size = 0;
-          row->points = malloc(sizeof(uint16_t) * row->capacity);
-          row->height = 0;
-          row->next = NULL;
-        } else if (row->y != y) {
-          row = teams[(unsigned char) cells[pt]].last->next = malloc(sizeof(bbbout_cellset_row));
+          rowgroup->size = 1;
+          rowgroup->next = NULL;
 
-          if (row == NULL) {
-            bbbout_free_cellsets(&teams[1], stream->teams);
-            bbbout_free_cellsets(&teams[255], 1);
-            return -8;
+          row = &rowgroup->rows[0];
+
+          row->y = y;
+          row->size = 0;
+          row->expansion = NULL;
+
+          teams[(unsigned char) cells[pt]].number_of_rows++;
+        } else {
+          row = &rowgroup->rows[rowgroup->size - 1];
+        }
+
+        if (row->y != y) {
+          if (rowgroup->size == BBBOUT_CELLSET_ROWGROUP_CAPACITY) {
+            // allocate new rowgroup
+            teams[(unsigned char) cells[pt]].last->next = rowgroup = malloc(sizeof(bbbout_cellset_rowgroup));
+            teams[(unsigned char) cells[pt]].last = teams[(unsigned char) cells[pt]].last->next;
+
+            if (rowgroup == NULL) {
+              bbbout_free_cellsets(&teams[1], stream->teams);
+              bbbout_free_cellsets(&teams[255], 1);
+              return -8;
+            }
+
+            rowgroup->size = 1;
+            rowgroup->next = NULL;
+
+            row = &rowgroup->rows[0];
+          } else {
+            // add to rowgroup
+            row = &rowgroup->rows[rowgroup->size++];
           }
 
           row->y = y;
-          row->capacity = 64;
           row->size = 0;
-          row->points = malloc(sizeof(uint16_t) * row->capacity);
-          row->height = teams[(unsigned char) cells[pt]].last->height + 1;
-          row->next = NULL;
+          row->expansion = NULL;
 
-          teams[(unsigned char) cells[pt]].last = row;
+          teams[(unsigned char) cells[pt]].number_of_rows++;
         }
 
-        if (row->size == row->capacity) {
-          row->capacity *= 2;
-          row->points = realloc(row->points, sizeof(uint16_t) * row->capacity);
-        }
+        if (row->size >= BBBOUT_CELLSET_ROW_CAPACITY) {
+          if (row->expansion == NULL) {
+            row->expansion = malloc(sizeof(bbbout_cellset_row_expansion));
 
-        row->points[row->size++] = i16tobe16(x);
+            if (row->expansion == NULL) {
+              bbbout_free_cellsets(&teams[1], stream->teams);
+              bbbout_free_cellsets(&teams[255], 1);
+              return -8;
+            }
+
+            row->expansion->expansion = NULL;
+          } else if (row->size % BBBOUT_CELLSET_ROW_CAPACITY == 0) {
+            row->expansion->expansion = malloc(sizeof(bbbout_cellset_row_expansion));
+
+            if (row->expansion->expansion == NULL) {
+              bbbout_free_cellsets(&teams[1], stream->teams);
+              bbbout_free_cellsets(&teams[255], 1);
+              return -8;
+            }
+
+            row->expansion = row->expansion->expansion;
+            row->expansion->expansion = NULL;
+          }
+
+          row->expansion->points[row->size++ % BBBOUT_CELLSET_ROW_CAPACITY] = i16tobe16(x);
+        } else {
+          row->points[row->size++] = i16tobe16(x);
+        }
       }
     }
   }
@@ -199,18 +242,29 @@ int bbbout_build_cellsets(bbbout_stream *stream, bbbout_cellset *teams, char *ce
 }
 
 void bbbout_free_cellsets(bbbout_cellset *cellsets, int size) {
-  int i;
-  bbbout_cellset_row *cur_row, *to_be_freed;
+  int i, j;
+  bbbout_cellset_rowgroup *cur_row_group, *to_be_freed_group;
+  bbbout_cellset_row_expansion *cur_row_expansion, *to_be_freed_expansion;
 
   for (i = 0; i < size; i++) {
-    cur_row = cellsets[i].first;
+    cur_row_group = cellsets[i].first;
 
-    while (cur_row != NULL) {
-      to_be_freed = cur_row;
-      cur_row = cur_row->next;
+    while (cur_row_group != NULL) {
+      to_be_freed_group = cur_row_group;
+      cur_row_group = cur_row_group->next;
 
-      free(to_be_freed->points);
-      free(to_be_freed);
+      for (j = 0; j < to_be_freed_group->size; j++) {
+        cur_row_expansion = to_be_freed_group->rows[j].expansion;
+
+        while (cur_row_expansion != NULL) {
+          to_be_freed_expansion = cur_row_expansion;
+          cur_row_expansion = cur_row_expansion->expansion;
+
+          free(to_be_freed_expansion);
+        }
+      }
+
+      free(to_be_freed_group);
     }
 
     cellsets[i].first = 0;
@@ -222,15 +276,34 @@ int bbbout_write_cellset(bbbout_stream *stream, const bbbout_cellset cellset) {
   if (cellset.first == NULL) {
     fput_be16(0, stream->file);
   } else {
-    bbbout_cellset_row *row = cellset.first;
+    bbbout_cellset_rowgroup *rowgroup = cellset.first;
 
-    fput_be16(cellset.last->height + 1, stream->file);
+    fput_be16(cellset.number_of_rows, stream->file);
 
-    while (row != NULL) {
-      fput_be16(row->y,    stream->file);
-      fput_be16(row->size, stream->file);
-      fwrite(row->points, sizeof(uint16_t), row->size, stream->file);
-      row = row->next;
+    while (rowgroup != NULL) {
+      int i;
+
+      for (i = 0; i < rowgroup->size; i++) {
+        bbbout_cellset_row *row = &rowgroup->rows[i];
+
+        bbbout_cellset_row_expansion *expansion = row->expansion;
+
+        fput_be16(row->y,    stream->file);
+        fput_be16(row->size, stream->file);
+
+        if (expansion) {
+          fwrite(row->points, sizeof(uint16_t), BBBOUT_CELLSET_ROW_CAPACITY, stream->file);
+          fwrite(row->expansion->points, sizeof(uint16_t), row->size % BBBOUT_CELLSET_ROW_CAPACITY, stream->file);
+
+          while ((expansion = expansion->expansion) != NULL) {
+            fwrite(row->expansion->points, sizeof(uint16_t), BBBOUT_CELLSET_ROW_CAPACITY, stream->file);
+          }
+        } else {
+          fwrite(row->points, sizeof(uint16_t), row->size, stream->file);
+        }
+      }
+
+      rowgroup = rowgroup->next;
     }
   }
 

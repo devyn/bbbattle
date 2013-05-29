@@ -31,20 +31,36 @@ typedef struct {
   FILE *file;
 } bbbout_stream;
 
+#define BBBOUT_CELLSET_ROW_CAPACITY 32
+#define BBBOUT_CELLSET_ROWGROUP_CAPACITY 128
+
+typedef struct bbbout_cellset_row_expansion {
+  uint16_t points[BBBOUT_CELLSET_ROW_CAPACITY];
+
+  struct bbbout_cellset_row_expansion *expansion;
+} bbbout_cellset_row_expansion;
+
 typedef struct bbbout_cellset_row {
-  uint16_t  y;
-  uint16_t  size;
-  uint16_t  capacity;
-  uint16_t *points;
+  uint16_t y;
+  uint16_t size;
+  uint16_t points[BBBOUT_CELLSET_ROW_CAPACITY];
 
-  uint16_t  height;
-
-  struct bbbout_cellset_row *next;
+  bbbout_cellset_row_expansion *expansion;
 } bbbout_cellset_row;
 
+typedef struct bbbout_cellset_rowgroup {
+  unsigned char size;
+
+  bbbout_cellset_row rows[BBBOUT_CELLSET_ROWGROUP_CAPACITY];
+
+  struct bbbout_cellset_rowgroup *next;
+} bbbout_cellset_rowgroup;
+
 typedef struct {
-  bbbout_cellset_row *first;
-  bbbout_cellset_row *last;
+  uint16_t number_of_rows;
+
+  bbbout_cellset_rowgroup *first;
+  bbbout_cellset_rowgroup *last;
 } bbbout_cellset;
 
 void bbbout_close(bbbout_stream *stream);
