@@ -24,7 +24,7 @@ __kernel void step_bbbattle(__global const char *alive, __global const char *dyi
 
   const size_t p = y*WIDTH + x;
 
-  if (alive[p] != 0 || dying[p] != 0) {
+  if (alive[p] | dying[p]) {
     new_alive[p] = 0;
   } else {
     int  alive_neighbor_count = 0;
