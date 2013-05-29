@@ -213,7 +213,12 @@ int main(int argc, char **argv) {
   assert(err == CL_SUCCESS);
 
   char options[64];
+
+#ifdef OPENCL_CPU
+  sprintf(options, "-DWIDTH=%i -DHEIGHT=%i -DOPENCL_CPU", width, height);
+#else
   sprintf(options, "-DWIDTH=%i -DHEIGHT=%i", width, height);
+#endif
 
   err = clBuildProgram(program, 1, &device, options, NULL, NULL);
   if (err != CL_SUCCESS) {
