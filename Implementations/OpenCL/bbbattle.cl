@@ -8,14 +8,14 @@ __kernel void step_bbbattle(__global const char *alive, __global const char *dyi
 
   char neighbors[8];
 
-  neighbors[0] = ((x != 0)     & (y != 0))      ? alive[topoint(x - 1, y - 1)] : 0;
-  neighbors[1] =                 (y != 0)       ? alive[topoint(x    , y - 1)] : 0;
-  neighbors[2] = ((x != WIDTH) & (y != 0))      ? alive[topoint(x + 1, y - 1)] : 0;
-  neighbors[3] =  (x != 0)                      ? alive[topoint(x - 1, y    )] : 0;
-  neighbors[4] =  (x != WIDTH)                  ? alive[topoint(x + 1, y    )] : 0;
-  neighbors[5] = ((x != 0)     & (y != HEIGHT)) ? alive[topoint(x - 1, y + 1)] : 0;
-  neighbors[6] =                 (y != HEIGHT)  ? alive[topoint(x    , y + 1)] : 0;
-  neighbors[7] = ((x != WIDTH) & (y != HEIGHT)) ? alive[topoint(x + 1, y + 1)] : 0;
+  neighbors[0] = ((x != 0)         & (y != 0))          ? alive[topoint(x - 1, y - 1)] : 0;
+  neighbors[1] =                     (y != 0)           ? alive[topoint(x    , y - 1)] : 0;
+  neighbors[2] = ((x != WIDTH - 1) & (y != 0))          ? alive[topoint(x + 1, y - 1)] : 0;
+  neighbors[3] =  (x != 0)                              ? alive[topoint(x - 1, y    )] : 0;
+  neighbors[4] =  (x != WIDTH - 1)                      ? alive[topoint(x + 1, y    )] : 0;
+  neighbors[5] = ((x != 0)         & (y != HEIGHT - 1)) ? alive[topoint(x - 1, y + 1)] : 0;
+  neighbors[6] =                     (y != HEIGHT - 1)  ? alive[topoint(x    , y + 1)] : 0;
+  neighbors[7] = ((x != WIDTH - 1) & (y != HEIGHT - 1)) ? alive[topoint(x + 1, y + 1)] : 0;
 
   barrier(CLK_GLOBAL_MEM_FENCE); // CPUs like to have everything sync'd up before moving on
 
