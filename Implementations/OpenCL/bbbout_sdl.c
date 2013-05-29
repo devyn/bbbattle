@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <stdint.h>
 
-#include <SDL/SDL.h>
+#include <SDL.h>
 
 #include "fmt_bbbout_read.h"
 
