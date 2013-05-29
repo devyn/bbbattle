@@ -95,7 +95,9 @@ int main(int argc, char **argv) {
     }
   }
 
-  puts(bbbout_strerror(err));
+  if (err < BBBOUT_SUCCESS) {
+    puts(bbbout_strerror(err));
+  }
 
   free(alive);
   free(dying);

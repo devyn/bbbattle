@@ -7,6 +7,10 @@ void bbbout_close(bbbout_stream *stream) {
 
 char *bbbout_strerror(int error_code) {
   switch (error_code) {
+    case BBBOUT_END_OF_STREAM:
+      return "end of stream (BUG: not an error!)";
+    case BBBOUT_SUCCESS:
+      return "success (BUG: not an error!)";
     case BBBOUT_MEMORY_ALLOCATION_ERROR:
       return "error while attempting to allocate memory";
     case BBBOUT_FILE_OPEN_ERROR:

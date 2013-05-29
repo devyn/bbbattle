@@ -159,7 +159,6 @@ int bbbout_read_generation(bbbout_stream *stream, uint32_t *gen_id, char *alive,
   /* read generation ID */
 
   if (fgetc(stream->file) != 'g') {
-      printf("ln %i seek %li\n", __LINE__, ftell(stream->file));
     return BBBOUT_GENERATION_INVALID_ERROR;
   }
 
@@ -169,7 +168,7 @@ int bbbout_read_generation(bbbout_stream *stream, uint32_t *gen_id, char *alive,
 
   while (1) {
     if (feof(stream->file)) {
-      return BBBOUT_SUCCESS;
+      return BBBOUT_END_OF_STREAM;
     }
 
     if (fgetc(stream->file) != 't') {
@@ -198,11 +197,11 @@ int bbbout_read_generation(bbbout_stream *stream, uint32_t *gen_id, char *alive,
       return err;
     }
 
-    if (feof(stream->file)) {
-      return BBBOUT_SUCCESS;
-    }
-
     char next = fgetc(stream->file);
+
+    if (feof(stream->file)) {
+      return BBBOUT_END_OF_STREAM;
+    }
 
     switch (next) {
       case 'd':
@@ -217,6 +216,10 @@ int bbbout_read_generation(bbbout_stream *stream, uint32_t *gen_id, char *alive,
         }
 
         next = fgetc(stream->file);
+
+        if (feof(stream->file)) {
+          return BBBOUT_END_OF_STREAM;
+        }
 
         switch (next) {
           case 't':
