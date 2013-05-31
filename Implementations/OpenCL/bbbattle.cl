@@ -54,37 +54,3 @@ __kernel void step_bbbattle(__global const char *alive, __global const char *dyi
     }
   }
 }
-
-__kernel void scan_for_bbbout(__global const char *cells, __global unsigned short *out) {
-  const int y = get_global_id(0);
-
-  const size_t team_size   = (WIDTH + 1) * HEIGHT;
-  const size_t team_offset = (WIDTH + 1) * y;
-
-  int x;
-
-  __private unsigned short team_count_neutral = 0;
-  __private unsigned short team_counts[TEAMS];
-
-  // In the output of this function, 0 is considered neutral.
-
-  for (x = 0; x < TEAMS; x++) {
-    team_counts[x] = 0;
-  }
-
-  for (x = 0; x < WIDTH; x++) {
-    unsigned char team = cells[y * WIDTH + x];
-
-    if ((team != 0) & (team != 255)) {
-      out[team * team_size + team_offset + team_counts[team - 1]++ + 1] = x;
-    } else if (team == 255) {
-      out[team_offset + team_count_neutral++ + 1] = x;
-    }
-  }
-
-  out[team_offset] = team_count_neutral;
-
-  for (x = 0; x < TEAMS; x++) {
-    out[(x + 1) * team_size + team_offset] = team_counts[x];
-  }
-}
