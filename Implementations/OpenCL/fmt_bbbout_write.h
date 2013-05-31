@@ -7,6 +7,8 @@ bbbout_stream *bbbout_open_write(char *path, uint16_t width, uint16_t height, un
 
 int bbbout_write_generation(bbbout_stream *stream, uint32_t gen_id, char *alive, char *dying, int *team_counts);
 
+int bbbout_write_scanned_generation(bbbout_stream *stream, uint32_t gen_id, unsigned short *alive, int *team_counts);
+
 int bbbout_build_cellsets(bbbout_stream *stream, bbbout_cellset *teams, char *cells, int *team_counts);
 
 void bbbout_free_cellsets(bbbout_cellset *cellsets, int size);

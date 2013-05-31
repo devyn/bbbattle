@@ -127,6 +127,58 @@ int bbbout_write_generation(bbbout_stream *stream, uint32_t gen_id, char *alive,
   return 0;
 }
 
+int bbbout_write_scanned_generation(bbbout_stream *stream, uint32_t gen_id, unsigned short *alive, int *team_counts) {
+  fputc('g', stream->file);
+
+  fput_be32(gen_id, stream->file);
+
+  int team;
+  for (team = 0; team <= stream->teams; team++) {
+    team_counts[team == 0 ? 255 : team] = 0;
+  }
+
+  const size_t team_size = (stream->width + 1) * stream->height;
+
+  for (team = 0; team <= stream->teams; team++) {
+    int rows, y;
+    for (rows = 0, y = 0; y < stream->height; y++) {
+      rows += alive[team_size * team + (stream->width + 1) * y] > 0;
+    }
+
+    if (rows > 0) {
+      if (team != 0) {
+        fputc('t', stream->file);
+        fput_be16(team, stream->file);
+      } else {
+        fputs("t\xFF\xFF", stream->file);
+      }
+
+      fputc('a', stream->file);
+
+      fput_be16(rows, stream->file);
+
+      for (y = 0; y < stream->height; y++) {
+        const int base     = team_size * team + (stream->width + 1) * y;
+        const int n_points = alive[base];
+
+        if (n_points > 0) {
+          team_counts[team == 0 ? 255 : team] += n_points;
+
+          fput_be16(y, stream->file);
+          fput_be16(n_points, stream->file);
+
+          int i;
+          for (i = 1; i <= n_points; i++) {
+            fput_be16(alive[base + i], stream->file);
+          }
+        }
+      }
+    }
+  }
+
+  return 0;
+}
+
 int bbbout_build_cellsets(bbbout_stream *stream, bbbout_cellset *teams, char *cells, int *team_counts) {
   uint16_t x, y;
   size_t pt;

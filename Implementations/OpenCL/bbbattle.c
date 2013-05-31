@@ -20,28 +20,20 @@ cl_context context;
 cl_command_queue queue;
 
 cl_kernel step_bbbattle;
+cl_kernel scan_for_bbbout;
 
 cl_mem alive_d;
 cl_mem dying_d;
 cl_mem new_alive_d;
+cl_mem out_d;
 
 size_t dimensions[2];
 
 void step() {
+}
+
+void scan(int height) {
   cl_int err;
-
-  err = clEnqueueNDRangeKernel(queue, step_bbbattle, 2, NULL, dimensions, NULL, 0, NULL, NULL);
-  assert(err == CL_SUCCESS);
-
-  // swap buffers
-  cl_mem temp = new_alive_d;
-  new_alive_d = dying_d;
-  dying_d = alive_d;
-  alive_d = temp;
-
-  err = clSetKernelArg(step_bbbattle, 0, sizeof(cl_mem),  &alive_d);     assert(err == CL_SUCCESS);
-  err = clSetKernelArg(step_bbbattle, 1, sizeof(cl_mem),  &dying_d);     assert(err == CL_SUCCESS);
-  err = clSetKernelArg(step_bbbattle, 2, sizeof(cl_mem),  &new_alive_d); assert(err == CL_SUCCESS);
 }
 
 void print_status(int generation, int teams, int *team_counts, struct rgb24 *team_colors) {
@@ -109,11 +101,12 @@ int main(int argc, char **argv) {
 
   /* create buffers and load bbbattle file */
 
-  int width;
-  int height;
-  int teams;
+  int width = 0;
+  int height = 0;
+  int teams = 0;
   char *alive_h;
   char *dying_h;
+  unsigned short *out_h;
   struct rgb24 team_colors[256];
   int team_counts[256];
 
@@ -215,9 +208,9 @@ int main(int argc, char **argv) {
   char options[64];
 
 #ifdef OPENCL_CPU
-  sprintf(options, "-DWIDTH=%i -DHEIGHT=%i -DOPENCL_CPU", width, height);
+  sprintf(options, "-DWIDTH=%i -DHEIGHT=%i -DTEAMS=%i -DOPENCL_CPU", width, height, teams);
 #else
-  sprintf(options, "-DWIDTH=%i -DHEIGHT=%i", width, height);
+  sprintf(options, "-DWIDTH=%i -DHEIGHT=%i -DTEAMS=%i", width, height, teams);
 #endif
 
   err = clBuildProgram(program, 1, &device, options, NULL, NULL);
@@ -238,7 +231,8 @@ int main(int argc, char **argv) {
 
   /* create device buffers */
 
-  const size_t mem_size = width * height * sizeof(char);
+  const size_t mem_size     = width * height * sizeof(char);
+  const size_t out_mem_size = (teams + 1) * (width + 1) * height * sizeof(uint16_t);
 
   dimensions[0] = width;
   dimensions[1] = height;
@@ -252,7 +246,14 @@ int main(int argc, char **argv) {
   new_alive_d = clCreateBuffer(context, CL_MEM_READ_WRITE, mem_size, NULL, &err);
   assert(err == CL_SUCCESS);
 
-  /* get the kernel */
+  printf("mem_size: %i, out_mem_size: %i\n", mem_size, out_mem_size);
+
+  out_d = clCreateBuffer(context, CL_MEM_READ_WRITE, out_mem_size, NULL, &err);
+  assert(err == CL_SUCCESS);
+
+  out_h = malloc(out_mem_size);
+
+  /* get the kernels */
 
   step_bbbattle = clCreateKernel(program, "step_bbbattle", &err);
   assert(err == CL_SUCCESS);
@@ -261,15 +262,42 @@ int main(int argc, char **argv) {
   err = clSetKernelArg(step_bbbattle, 1, sizeof(cl_mem),  &dying_d);     assert(err == CL_SUCCESS);
   err = clSetKernelArg(step_bbbattle, 2, sizeof(cl_mem),  &new_alive_d); assert(err == CL_SUCCESS);
 
-  /* run kernel and stream to bbbout */
+  scan_for_bbbout = clCreateKernel(program, "scan_for_bbbout", &err);
+  assert(err == CL_SUCCESS);
+
+  /* run step kernel and stream to bbbout */
+
+  const size_t height_dimension = height;
 
   int gen = 1;
   while (1) {
-    step();
-    err = clEnqueueReadBuffer(queue, alive_d, CL_TRUE, 0, mem_size, alive_h, 0, NULL, NULL);
+    /* step */
+
+    err = clEnqueueNDRangeKernel(queue, step_bbbattle, 2, NULL, dimensions, NULL, 0, NULL, NULL);
     assert(err == CL_SUCCESS);
 
-    bbbout_write_generation(bbbo, gen, alive_h, NULL, team_counts);
+    // swap buffers
+    cl_mem temp = new_alive_d;
+    new_alive_d = dying_d;
+    dying_d = alive_d;
+    alive_d = temp;
+
+    err = clSetKernelArg(step_bbbattle, 0, sizeof(cl_mem),  &alive_d);     assert(err == CL_SUCCESS);
+    err = clSetKernelArg(step_bbbattle, 1, sizeof(cl_mem),  &dying_d);     assert(err == CL_SUCCESS);
+    err = clSetKernelArg(step_bbbattle, 2, sizeof(cl_mem),  &new_alive_d); assert(err == CL_SUCCESS);
+
+    /* scan */
+
+    err = clSetKernelArg(scan_for_bbbout, 0, sizeof(cl_mem), &alive_d);    assert(err == CL_SUCCESS);
+    err = clSetKernelArg(scan_for_bbbout, 1, sizeof(cl_mem), &out_d);      assert(err == CL_SUCCESS);
+
+    err = clEnqueueNDRangeKernel(queue, scan_for_bbbout, 1, NULL, &height_dimension, NULL, 0, NULL, NULL);
+    assert(err == CL_SUCCESS);
+
+    err = clEnqueueReadBuffer(queue, out_d, CL_TRUE, 0, out_mem_size, out_h, 0, NULL, NULL);
+    assert(err == CL_SUCCESS);
+
+    bbbout_write_scanned_generation(bbbo, gen, out_h, team_counts);
     print_status(gen, teams, team_counts, team_colors);
 
     if (check_winner(teams, team_counts, team_colors) != 0) {
@@ -283,6 +311,7 @@ int main(int argc, char **argv) {
 
   free(alive_h);
   free(dying_h);
+  free(out_h);
 
   clReleaseCommandQueue(queue);
   clReleaseKernel(step_bbbattle);
