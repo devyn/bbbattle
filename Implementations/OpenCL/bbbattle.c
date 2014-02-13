@@ -243,13 +243,13 @@ int main(int argc, char **argv) {
   dimensions[0] = width;
   dimensions[1] = height;
 
-  alive_d = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, mem_size, alive_h, &err);
+  alive_d = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR | CL_MEM_ALLOC_HOST_PTR, mem_size, alive_h, &err);
   assert(err == CL_SUCCESS);
 
-  dying_d = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, mem_size, dying_h, &err);
+  dying_d = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR | CL_MEM_ALLOC_HOST_PTR, mem_size, dying_h, &err);
   assert(err == CL_SUCCESS);
 
-  new_alive_d = clCreateBuffer(context, CL_MEM_READ_WRITE, mem_size, NULL, &err);
+  new_alive_d = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR, mem_size, NULL, &err);
   assert(err == CL_SUCCESS);
 
   /* get the kernel */
@@ -263,13 +263,19 @@ int main(int argc, char **argv) {
 
   /* run kernel and stream to bbbout */
 
+  char *alive_target;
+
   int gen = 1;
   while (1) {
     step();
-    err = clEnqueueReadBuffer(queue, alive_d, CL_TRUE, 0, mem_size, alive_h, 0, NULL, NULL);
+    alive_target = clEnqueueMapBuffer(queue, alive_d, CL_TRUE, CL_MAP_READ, 0, mem_size, 0, NULL, NULL, &err);
     assert(err == CL_SUCCESS);
 
+    memcpy(alive_h, alive_target, mem_size);
+    clEnqueueUnmapMemObject(queue, alive_d, alive_target, 0, NULL, NULL);
+
     bbbout_write_generation(bbbo, gen, alive_h, NULL, team_counts);
+
     print_status(gen, teams, team_counts, team_colors);
 
     if (check_winner(teams, team_counts, team_colors) != 0) {
@@ -291,7 +297,10 @@ int main(int argc, char **argv) {
   clReleaseMemObject(dying_d);
   clReleaseMemObject(new_alive_d);
   clReleaseContext(context);
+
+#ifdef CL_VERSION_1_2
   clReleaseDevice(device);
+#endif
 
   return 0;
 }
