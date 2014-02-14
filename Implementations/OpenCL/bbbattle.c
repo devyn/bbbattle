@@ -109,9 +109,9 @@ int main(int argc, char **argv) {
 
   /* create buffers and load bbbattle file */
 
-  int width;
-  int height;
-  int teams;
+  int width  = 0;
+  int height = 0;
+  int teams  = 0;
   char *alive_h;
   char *dying_h;
   struct rgb24 team_colors[256];
