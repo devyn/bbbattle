@@ -4,6 +4,7 @@
 #include <assert.h>
 #include <limits.h>
 
+#define CL_USE_DEPRECATED_OPENCL_1_2_APIS
 #ifdef __APPLE__
   #include <OpenCL/cl.h>
 #else
@@ -109,13 +110,13 @@ int main(int argc, char **argv) {
 
   /* create buffers and load bbbattle file */
 
-  int width  = 0;
+  int width = 0;
   int height = 0;
-  int teams  = 0;
-  char *alive_h;
-  char *dying_h;
-  struct rgb24 team_colors[256];
-  int team_counts[256];
+  int teams = 0;
+  char *alive_h = NULL;
+  char *dying_h = NULL;
+  struct rgb24 *team_colors = calloc(256, sizeof(struct rgb24));
+  int *team_counts = calloc(256, sizeof(int));
 
   FILE *bbbf = fopen(argv[1], "r");
 

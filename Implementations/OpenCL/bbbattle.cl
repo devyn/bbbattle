@@ -15,7 +15,7 @@ __kernel void step_bbbattle(__global const char *alive, __global const char *dyi
   const char neighbor6 =                     (y != HEIGHT - 1)  ? alive[topoint(x    , y + 1)] : 0;
   const char neighbor7 = ((x != WIDTH - 1) & (y != HEIGHT - 1)) ? alive[topoint(x + 1, y + 1)] : 0;
 
-  barrier(CLK_GLOBAL_MEM_FENCE); // CPUs like to have everything sync'd up before moving on
+  //barrier(CLK_GLOBAL_MEM_FENCE); // CPUs like to have everything sync'd up before moving on
 
   if (alive[p] | dying[p]) {
     new_alive[p] = 0;
